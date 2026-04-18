@@ -2975,7 +2975,7 @@ dc8f5bb feat(backend): matching pipeline — orchestrator with gather-isolated p
 - Create: `backend/src/linkhop/short_id.py`
 - Create: `backend/tests/test_short_id.py`
 
-- [ ] **Step 13.1: Test — `tests/test_short_id.py`**
+- [x] **Step 13.1: Test — `tests/test_short_id.py`**
 
 ```python
 import re
@@ -3047,15 +3047,60 @@ async def test_service_lookup_by_short_id(session: AsyncSession):
     assert row.source_service == "spotify"
     assert row.source_id == "x"
     assert row.access_count == 1  # lookup bumped counter
+
+
+async def test_service_returns_existing_short_id_on_source_race():
+    # Simulates the IntegrityError-via-uq_conversion_source branch: B has already
+    # committed a row for the source, but A's pre-check misses (naturally in SQLite
+    # the second session would just see B's row, so we stub the first _find_existing
+    # call to None to force the INSERT path). The except-branch then re-queries via
+    # the real _find_existing and must return B's short_id — NOT burn 10 retries on
+    # fresh short_ids that would all re-trip the same source-uniqueness constraint.
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        session_local = async_sessionmaker(engine, expire_on_commit=False)
+
+        async with session_local() as session_a, session_local() as session_b:
+            svc_a = ShortIdService(session_a)
+            svc_b = ShortIdService(session_b)
+
+            sid_b = await svc_b.get_or_create(
+                source_service="spotify", source_type="track", source_id="race",
+                source_url="https://open.spotify.com/track/race",
+            )
+
+            real_find = svc_a._find_existing
+            calls = {"n": 0}
+
+            async def stub(service: str, type_: str, id_: str):
+                calls["n"] += 1
+                if calls["n"] == 1:
+                    return None
+                return await real_find(service, type_, id_)
+
+            svc_a._find_existing = stub  # type: ignore[method-assign]
+
+            sid_a = await svc_a.get_or_create(
+                source_service="spotify", source_type="track", source_id="race",
+                source_url="https://open.spotify.com/track/race",
+            )
+            assert sid_a == sid_b
+            # Two calls: the pre-check (stubbed → None) and the except-branch re-query
+            # (stub → real → B's row). Proves the IntegrityError recovery path ran.
+            assert calls["n"] == 2
+    finally:
+        await engine.dispose()
 ```
 
-- [ ] **Step 13.2: Test laufen — FAIL**
+- [x] **Step 13.2: Test laufen — FAIL**
 
 ```bash
 cd backend && pytest tests/test_short_id.py -v
 ```
 
-- [ ] **Step 13.3: `src/linkhop/short_id.py` schreiben**
+- [x] **Step 13.3: `src/linkhop/short_id.py` schreiben**
 
 ```python
 from __future__ import annotations
@@ -3084,15 +3129,9 @@ class ShortIdService:
     async def get_or_create(
         self, *, source_service: str, source_type: str, source_id: str, source_url: str,
     ) -> str:
-        existing = await self._s.scalar(
-            select(Conversion).where(
-                Conversion.source_service == source_service,
-                Conversion.source_type == source_type,
-                Conversion.source_id == source_id,
-            )
-        )
-        if existing:
-            return existing.short_id
+        existing_sid = await self._find_existing(source_service, source_type, source_id)
+        if existing_sid is not None:
+            return existing_sid
 
         for _ in range(10):
             sid = generate_short_id()
@@ -3102,18 +3141,39 @@ class ShortIdService:
                 source_service=source_service,
                 source_type=source_type,
                 source_id=source_id,
-                created_at=datetime.now(tz=timezone.utc),
-            )
+            )  # created_at comes from Conversion.server_default=func.now()
             self._s.add(row)
             try:
                 await self._s.commit()
                 return sid
             except IntegrityError:
                 await self._s.rollback()
-                # collision on short_id or unique source; retry
+                # Two distinct unique constraints can fail here:
+                #   - PK(short_id)            → real short-id collision → retry with a new id
+                #   - uq_conversion_source    → another request inserted the same source
+                #                                concurrently → load its short_id, don't retry
+                # Without this check the source-race would burn all 10 retries pointlessly.
+                raced_sid = await self._find_existing(source_service, source_type, source_id)
+                if raced_sid is not None:
+                    return raced_sid
                 continue
 
-        raise RuntimeError("failed to allocate short id after 10 retries")
+        raise RuntimeError(
+            f"failed to allocate short_id after 10 retries for "
+            f"({source_service}, {source_type}, {source_id})"
+        )
+
+    async def _find_existing(
+        self, source_service: str, source_type: str, source_id: str
+    ) -> str | None:
+        row = await self._s.scalar(
+            select(Conversion).where(
+                Conversion.source_service == source_service,
+                Conversion.source_type == source_type,
+                Conversion.source_id == source_id,
+            )
+        )
+        return row.short_id if row is not None else None
 
     async def lookup(self, short_id: str) -> Conversion | None:
         row = await self._s.scalar(select(Conversion).where(Conversion.short_id == short_id))
@@ -3130,20 +3190,37 @@ class ShortIdService:
         return row
 ```
 
-- [ ] **Step 13.4: Tests ausführen**
+- [x] **Step 13.4: Tests ausführen**
 
 ```bash
 cd backend && pytest tests/test_short_id.py -v
 ```
 
-Expected: `5 passed`.
+Actual: `6 passed`. Full suite: `117 passed`.
 
-- [ ] **Step 13.5: Commit**
+- [x] **Step 13.5: Commit**
 
-```bash
-git add backend/
-git commit -m "feat(backend): short-id generator with DB-backed uniqueness"
 ```
+7dc4311 feat(backend): short-id generator with DB-backed uniqueness and source-race handling
+96f0d22 refactor(backend): short-id — drop client-side created_at override, annotate RuntimeError, exercise IntegrityError path in race test
+```
+
+**Post-Implementation-Bilanz (2026-04-18):**
+- Pre-Dispatch-Patch am Plan: `IntegrityError`-Pfad unterscheidet jetzt PK-Kollision vs. Source-Race; Helper `_find_existing` extrahiert; Zusatztest `test_service_returns_existing_short_id_on_source_race`.
+- Spec-Review: 2 triviale Stilpunkte (unused `Conversion`-Import im Test, `UTC`-Alias statt `timezone.utc`) — keine Abweichung.
+- Quality-Review: 9 Findings (1 CRITICAL, 3 SIGNIFICANT, 3 MINOR, 1 STYLE, 1 NOT-AN-ISSUE).
+  - **Akzeptiert (3):**
+    1. [CRITICAL] Race-Test triggerte `IntegrityError`-Pfad **nicht** (empirisch verifiziert: SQLite-Default-Isolation → A sieht B's Commit sofort, pre-check greift, INSERT-Pfad nie erreicht). Fix via Monkey-Patch `svc_a._find_existing` erster Call → None, mit `assert calls['n'] == 2` als harter Deckungs-Beweis.
+    2. [SIGNIFICANT] `created_at=datetime.now(tz=UTC)` überschrieb `server_default=func.now()` — entfernt, Model-Default übernimmt.
+    3. [SIGNIFICANT] `RuntimeError` ohne Kontext — Source-Tuple in Message ergänzt.
+  - **Abgelehnt (5):**
+    4. [SIGNIFICANT] `lookup`-Atomicity via `UPDATE ... RETURNING` — mit dem eigenen Argument des Reviewers („value is informational, not a primitive the caller reasons about") abgelehnt. Redirect-Endpoint liest `access_count` nicht.
+    5. [MINOR] Entropie-Docstring — CLAUDE.md: keine WAS-Kommentare.
+    6. [MINOR] `_find_existing`-Direktaufruf im Test — durch Fix #1 obsolet.
+    7. [MINOR] `lookup` mutiert-auf-Read Docstring — Methodenname + UPDATE im Body selbstdokumentierend.
+    8. [STYLE] `_s` → `_session` — Bike-Shedding.
+  - **Nicht-Issue (1):** Rollback-Visibility über Backends — vom Reviewer selbst freigegeben.
+- Laufende Summe über 13 Tasks: 62 reale Findings / 22 abgelehnt.
 
 ---
 
