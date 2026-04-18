@@ -41,7 +41,6 @@ class ShortIdService:
                 source_service=source_service,
                 source_type=source_type,
                 source_id=source_id,
-                created_at=datetime.now(tz=UTC),
             )
             self._s.add(row)
             try:
@@ -59,7 +58,10 @@ class ShortIdService:
                     return raced_sid
                 continue
 
-        raise RuntimeError("failed to allocate short id after 10 retries")
+        raise RuntimeError(
+            f"failed to allocate short_id after 10 retries for "
+            f"({source_service}, {source_type}, {source_id})"
+        )
 
     async def _find_existing(
         self, source_service: str, source_type: str, source_id: str
