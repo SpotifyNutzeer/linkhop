@@ -11,6 +11,7 @@ from linkhop.config import Settings
 from linkhop.db import make_engine, make_session_factory
 from linkhop.deps import build_adapter_map
 from linkhop.errors import install_error_handlers
+from linkhop.routes import health as health_route
 
 
 @asynccontextmanager
@@ -47,6 +48,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = settings
     install_error_handlers(app)
+    app.include_router(health_route.router)
     return app
 
 
