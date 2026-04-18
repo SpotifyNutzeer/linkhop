@@ -11,7 +11,7 @@ from linkhop.cache import Cache
 from linkhop.config import Settings
 from linkhop.main import create_app
 from linkhop.models.db import Base
-from linkhop.models.domain import ContentType, ResolvedContent, SearchHit
+from linkhop.models.domain import ContentType, ResolvedContent
 from linkhop.ratelimit import RateLimiter
 
 
@@ -44,8 +44,12 @@ def app_with_limits():
         rc = fakeredis.aioredis.FakeRedis()
         app.state.redis = rc
         app.state.cache = Cache(rc, default_ttl=60)
+        # Aus settings lesen, damit das Setup single-sourced bleibt — sonst
+        # driften Fixture-Konstante und Settings-Mutation lautlos auseinander.
         app.state.ratelimiter = RateLimiter(
-            rc, anonymous_per_minute=2, with_key_per_minute=10,
+            rc,
+            anonymous_per_minute=settings.rate_anonymous_per_minute,
+            with_key_per_minute=settings.rate_with_key_per_minute,
         )
         app.state.adapters = {"tidal": StubAdapter()}
 

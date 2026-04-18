@@ -9,7 +9,7 @@ from linkhop.errors import AppError
 async def enforce_rate_limit(
     request: Request,
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
-) -> dict | None:
+) -> dict:
     limiter = request.app.state.ratelimiter
 
     key_record = None
