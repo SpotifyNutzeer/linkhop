@@ -3230,7 +3230,7 @@ Actual: `6 passed`. Full suite: `117 passed`.
 - Create: `backend/src/linkhop/api_keys.py`
 - Create: `backend/tests/test_api_keys.py`
 
-- [ ] **Step 14.1: Test — `tests/test_api_keys.py`**
+- [x] **Step 14.1: Test — `tests/test_api_keys.py`**
 
 ```python
 import pytest
@@ -3292,13 +3292,13 @@ async def test_list_and_revoke(session: AsyncSession):
     assert active[0].id == b.id
 ```
 
-- [ ] **Step 14.2: Test laufen — FAIL**
+- [x] **Step 14.2: Test laufen — FAIL**
 
 ```bash
 cd backend && pytest tests/test_api_keys.py -v
 ```
 
-- [ ] **Step 14.3: `src/linkhop/api_keys.py` schreiben**
+- [x] **Step 14.3: `src/linkhop/api_keys.py` schreiben**
 
 ```python
 from __future__ import annotations
@@ -3306,7 +3306,7 @@ from __future__ import annotations
 import secrets
 import string
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
@@ -3315,7 +3315,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from linkhop.models.db import ApiKey
 
-KEY_PREFIX_LEN = 8
+# Prefix = "lhk_" + 8 random chars; 62^8 ≈ 2.2e14 combinations, so a prefix collision
+# with the unique key_prefix DB constraint is astronomically unlikely at this scale.
+# (Before raising the length, 62^4 ≈ 14.7 M gave a birthday-paradox ~30% collision
+# at just 10k active keys, unhandled by create().)
+KEY_PREFIX_LEN = 12
 _KEY_SUFFIX_LEN = 32
 _ALPHA = string.ascii_letters + string.digits
 _hasher = PasswordHasher()
@@ -3341,9 +3345,8 @@ class ApiKeyService:
             key_prefix=prefix,
             key_hash=_hasher.hash(full),
             note=note,
-            created_at=datetime.now(tz=timezone.utc),
             rate_limit_override=rate_limit_override,
-        )
+        )  # created_at comes from ApiKey.server_default=func.now()
         self._s.add(row)
         await self._s.commit()
         await self._s.refresh(row)
@@ -3366,7 +3369,7 @@ class ApiKeyService:
 
     async def revoke(self, key_id: str) -> None:
         await self._s.execute(
-            update(ApiKey).where(ApiKey.id == key_id).values(revoked_at=datetime.now(tz=timezone.utc))
+            update(ApiKey).where(ApiKey.id == key_id).values(revoked_at=datetime.now(tz=UTC))
         )
         await self._s.commit()
 
@@ -3375,7 +3378,7 @@ class ApiKeyService:
         return list(result.all())
 ```
 
-- [ ] **Step 14.4: Tests ausführen**
+- [x] **Step 14.4: Tests ausführen**
 
 ```bash
 cd backend && pytest tests/test_api_keys.py -v
@@ -3383,12 +3386,40 @@ cd backend && pytest tests/test_api_keys.py -v
 
 Expected: `5 passed`.
 
-- [ ] **Step 14.5: Commit**
+- [x] **Step 14.5: Commit**
 
 ```bash
 git add backend/
 git commit -m "feat(backend): api-key service with argon2 hashing"
 ```
+
+**Post-Implementation-Bilanz (Task 14):**
+
+Pre-Dispatch-Plan-Patches:
+- `KEY_PREFIX_LEN` von 8 auf 12 erhöht. 62⁴ = 14.7M Kombinationen kollidieren bei ~10k
+  aktiven Keys mit ~30% Birthday-Wahrscheinlichkeit; der Plan hatte dafür keinen Retry
+  vorgesehen — `create()` hätte bei Kollision IntegrityError geworfen. 62⁸ = 2.2e14
+  ist astronomisch sicher.
+- `created_at=datetime.now(tz=UTC)` Client-Override entfernt, da `ApiKey`-Model bereits
+  `server_default=func.now()` hat (Spec-Bug, wie bei Task 13).
+- `from datetime import UTC` statt `timezone.utc` (Python-3.12-idiomatisch).
+
+Feat-Commit (`de85aef`): 5 Basis-Tests, 122 passed.
+
+Review-Fixes (2 akzeptiert, 5 rejected):
+- `_MAX_KEY_LEN = 128` + Längenguard `KEY_PREFIX_LEN <= len(presented) <= _MAX_KEY_LEN`.
+  Ohne Cap: Angreifer POSTet Multi-MB-"Key" und zwingt uns, argon2 darüber laufen zu
+  lassen — billiger DoS-Vektor.
+- `_DUMMY_HASH` + `_hasher.verify(_DUMMY_HASH, presented)` im Prefix-Miss-Branch.
+  Ohne Dummy-Hash verrät die Wall-Clock-Zeit, welche Prefixe in der DB sind (Miss:
+  schnell, Hit: ~100 ms argon2). Timing-Seitenkanal geschlossen.
+- Zwei Tests ergänzt: `test_verify_rejects_oversized_input` (DoS-Cap),
+  `test_verify_runs_argon2_on_unknown_prefix` (Timing-Equalisation per Proxy-Class
+  auf Modulebene, da `PasswordHasher.__slots__` direktes `setattr` verhindert).
+
+Refactor-Commit (`defc737`): 124 passed.
+
+Running Tally: **69 findings / 27 rejected über 14 Tasks**.
 
 ---
 
