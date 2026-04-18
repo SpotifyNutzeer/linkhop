@@ -77,3 +77,6 @@ def test_share_200_after_create(app_with_share):
     assert get_resp.status_code == 200
     body = get_resp.json()
     assert body["source"]["title"] == "N"
+    # Share-Lookup ruft convert_view mit share=False; die Antwort darf also
+    # keinen verschachtelten Share-Block mehr enthalten.
+    assert body["share"] is None

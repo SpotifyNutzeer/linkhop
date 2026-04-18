@@ -109,4 +109,4 @@ def test_convert_with_share_returns_short_id(patched_app):
     assert len(body["share"]["id"]) == 6
     # Prüfe Pfad-Form, damit Regressionen an scheme/host (leerer Host-Header,
     # fehlendes /c/-Prefix) nicht stumm den 6-Zeichen-Check passieren.
-    assert body["share"]["url"].endswith(f"/c/{body['share']['id']}")
+    assert body["share"]["url"].endswith(f"/api/v1/c/{body['share']['id']}")
