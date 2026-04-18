@@ -2,12 +2,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Literal
 
 
 class ContentType(StrEnum):
     TRACK = "track"
     ALBUM = "album"
     ARTIST = "artist"
+
+
+MatchType = Literal["isrc", "upc", "metadata"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,4 +35,4 @@ class SearchHit:
     id: str
     url: str
     confidence: float
-    match: str  # "isrc" | "upc" | "metadata"
+    match: MatchType

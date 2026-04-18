@@ -30,7 +30,9 @@ def test_convert_response_serializes():
             title="N", artists=["K"], album="O",
             duration_ms=225_000, isrc="FR", artwork="https://x",
         ),
-        targets={"spotify": TargetResult(status="ok", url="https://u", confidence=1.0, match="isrc")},
+        targets={
+            "spotify": TargetResult(status="ok", url="https://u", confidence=1.0, match="isrc"),
+        },
         cache={"hit": False, "ttl_seconds": 604_800},
         share=None,
     )

@@ -588,7 +588,9 @@ def test_convert_response_serializes():
             title="N", artists=["K"], album="O",
             duration_ms=225_000, isrc="FR", artwork="https://x",
         ),
-        targets={"spotify": TargetResult(status="ok", url="https://u", confidence=1.0, match="isrc")},
+        targets={
+            "spotify": TargetResult(status="ok", url="https://u", confidence=1.0, match="isrc"),
+        },
         cache={"hit": False, "ttl_seconds": 604_800},
         share=None,
     )
@@ -612,12 +614,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Literal
 
 
 class ContentType(StrEnum):
     TRACK = "track"
     ALBUM = "album"
     ARTIST = "artist"
+
+
+MatchType = Literal["isrc", "upc", "metadata"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -641,7 +647,7 @@ class SearchHit:
     id: str
     url: str
     confidence: float
-    match: str  # "isrc" | "upc" | "metadata"
+    match: MatchType
 ```
 
 - [ ] **Step 4.5: `src/linkhop/models/api.py` schreiben**
@@ -651,7 +657,9 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+
+from linkhop.models.domain import MatchType
 
 
 class SourceContent(BaseModel):
@@ -672,7 +680,7 @@ class TargetResult(BaseModel):
     status: Literal["ok", "not_found", "error"]
     url: str | None = None
     confidence: float | None = None
-    match: Literal["isrc", "upc", "metadata"] | None = None
+    match: MatchType | None = None
     message: str | None = None
 
 

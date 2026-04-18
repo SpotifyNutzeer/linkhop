@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+
+from linkhop.models.domain import MatchType
 
 
 class SourceContent(BaseModel):
@@ -23,7 +25,7 @@ class TargetResult(BaseModel):
     status: Literal["ok", "not_found", "error"]
     url: str | None = None
     confidence: float | None = None
-    match: Literal["isrc", "upc", "metadata"] | None = None
+    match: MatchType | None = None
     message: str | None = None
 
 
