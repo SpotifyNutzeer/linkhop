@@ -60,6 +60,7 @@ def test_capabilities_supports(caps, type_, expected):
 def test_adapter_error_str_and_raise():
     err = AdapterError("spotify", "not found")
     assert str(err) == "spotify: not found"
+    assert err.args == ("spotify", "not found")
     with pytest.raises(AdapterError) as exc_info:
         raise err
     assert exc_info.value.service == "spotify"

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
+from typing import Protocol, assert_never, runtime_checkable
 
 from linkhop.models.domain import ContentType, ResolvedContent, SearchHit
 from linkhop.url_parser import ParsedUrl
@@ -21,6 +21,8 @@ class AdapterCapabilities:
                 return self.album
             case ContentType.ARTIST:
                 return self.artist
+            case _:
+                assert_never(type_)
 
 
 @runtime_checkable
@@ -29,11 +31,11 @@ class ServiceAdapter(Protocol):
     capabilities: AdapterCapabilities
 
     async def resolve(self, parsed: ParsedUrl) -> ResolvedContent | None:
-        """URL in Form von ParsedUrl → Metadaten. None wenn nicht auffindbar."""
+        """Resolve a parsed URL to content metadata. Returns None if not found."""
         ...
 
     async def search(self, meta: ResolvedContent, target_type: ContentType) -> list[SearchHit]:
-        """Suche mit Metadaten vom Source-Dienst. Liefert bis zu 3 Kandidaten."""
+        """Search the service with source metadata. Returns up to 3 candidates."""
         ...
 
 

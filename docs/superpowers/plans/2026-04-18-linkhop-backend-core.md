@@ -1131,12 +1131,40 @@ touch backend/tests/adapters/__init__.py
 - [ ] **Step 7.2: Test schreiben — `tests/adapters/test_base.py`**
 
 ```python
-from linkhop.adapters.base import AdapterCapabilities, ServiceAdapter
+import pytest
+
+from linkhop.adapters.base import AdapterCapabilities, AdapterError, ServiceAdapter
+from linkhop.models.domain import ContentType
 
 
-def test_adapter_protocol_is_runtime_checkable():
-    class Dummy:
+class _Full:
+    service_id = "dummy"
+    capabilities = AdapterCapabilities(track=True, album=False, artist=False)
+
+    async def resolve(self, parsed):
+        return None
+
+    async def search(self, meta, target_type):
+        return []
+
+
+def test_protocol_accepts_full_implementation():
+    assert isinstance(_Full(), ServiceAdapter)
+
+
+def test_protocol_rejects_missing_method():
+    class NoSearch:
         service_id = "dummy"
+        capabilities = AdapterCapabilities(track=True, album=False, artist=False)
+
+        async def resolve(self, parsed):
+            return None
+
+    assert not isinstance(NoSearch(), ServiceAdapter)
+
+
+def test_protocol_rejects_missing_attribute():
+    class NoServiceId:
         capabilities = AdapterCapabilities(track=True, album=False, artist=False)
 
         async def resolve(self, parsed):
@@ -1145,8 +1173,31 @@ def test_adapter_protocol_is_runtime_checkable():
         async def search(self, meta, target_type):
             return []
 
-    d = Dummy()
-    assert isinstance(d, ServiceAdapter)
+    assert not isinstance(NoServiceId(), ServiceAdapter)
+
+
+@pytest.mark.parametrize(
+    ("caps", "type_", "expected"),
+    [
+        (AdapterCapabilities(True, False, False), ContentType.TRACK, True),
+        (AdapterCapabilities(True, False, False), ContentType.ALBUM, False),
+        (AdapterCapabilities(False, True, False), ContentType.ALBUM, True),
+        (AdapterCapabilities(False, False, True), ContentType.ARTIST, True),
+        (AdapterCapabilities(True, True, True), ContentType.ARTIST, True),
+    ],
+)
+def test_capabilities_supports(caps, type_, expected):
+    assert caps.supports(type_) is expected
+
+
+def test_adapter_error_str_and_raise():
+    err = AdapterError("spotify", "not found")
+    assert str(err) == "spotify: not found"
+    assert err.args == ("spotify", "not found")
+    with pytest.raises(AdapterError) as exc_info:
+        raise err
+    assert exc_info.value.service == "spotify"
+    assert exc_info.value.message == "not found"
 ```
 
 - [ ] **Step 7.3: Test laufen — FAIL**
@@ -1160,9 +1211,9 @@ cd backend && pytest tests/adapters/test_base.py -v
 ```python
 from __future__ import annotations
 
-from linkhop.adapters.base import AdapterCapabilities, ServiceAdapter
+from linkhop.adapters.base import AdapterCapabilities, AdapterError, ServiceAdapter
 
-__all__ = ["AdapterCapabilities", "ServiceAdapter"]
+__all__ = ["AdapterCapabilities", "AdapterError", "ServiceAdapter"]
 ```
 
 - [ ] **Step 7.5: `src/linkhop/adapters/base.py` schreiben**
@@ -1171,7 +1222,7 @@ __all__ = ["AdapterCapabilities", "ServiceAdapter"]
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
+from typing import Protocol, assert_never, runtime_checkable
 
 from linkhop.models.domain import ContentType, ResolvedContent, SearchHit
 from linkhop.url_parser import ParsedUrl
@@ -1184,7 +1235,15 @@ class AdapterCapabilities:
     artist: bool
 
     def supports(self, type_: ContentType) -> bool:
-        return {"track": self.track, "album": self.album, "artist": self.artist}[type_.value]
+        match type_:
+            case ContentType.TRACK:
+                return self.track
+            case ContentType.ALBUM:
+                return self.album
+            case ContentType.ARTIST:
+                return self.artist
+            case _:
+                assert_never(type_)
 
 
 @runtime_checkable
@@ -1193,11 +1252,11 @@ class ServiceAdapter(Protocol):
     capabilities: AdapterCapabilities
 
     async def resolve(self, parsed: ParsedUrl) -> ResolvedContent | None:
-        """URL in Form von ParsedUrl → Metadaten. None wenn nicht auffindbar."""
+        """Resolve a parsed URL to content metadata. Returns None if not found."""
         ...
 
     async def search(self, meta: ResolvedContent, target_type: ContentType) -> list[SearchHit]:
-        """Suche mit Metadaten vom Source-Dienst. Liefert bis zu 3 Kandidaten."""
+        """Search the service with source metadata. Returns up to 3 candidates."""
         ...
 
 
@@ -1216,7 +1275,8 @@ class AdapterError(Exception):
 cd backend && pytest tests/adapters/test_base.py -v
 ```
 
-Expected: `1 passed`.
+Expected: `8 passed` (1 accepts + 2 rejects + 5 parametrized supports + 1 error; parametrize expands to 5).
+Actually count: `test_protocol_accepts_full_implementation` (1) + `test_protocol_rejects_missing_method` (1) + `test_protocol_rejects_missing_attribute` (1) + `test_capabilities_supports[...]` × 5 + `test_adapter_error_str_and_raise` (1) = **9 passed**.
 
 - [ ] **Step 7.7: Commit**
 
