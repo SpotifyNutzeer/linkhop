@@ -678,7 +678,7 @@ class SourceContent(BaseModel):
 
 
 class TargetResult(BaseModel):
-    status: Literal["ok", "not_found", "error"]
+    status: Literal["ok", "ok_low", "not_found", "error"]
     url: str | None = None
     confidence: float | None = None
     match: MatchType | None = None
@@ -4261,8 +4261,12 @@ def patched_app(monkeypatch):
 
 
 def test_convert_happy_path(patched_app):
-    with TestClient(patched_app) as client:
-        resp = client.get("/api/v1/convert", params={"url": "https://tidal.com/track/1"})
+    # Wichtig: KEIN `with`-Block um TestClient, sonst triggert FastAPI den
+    # echten Lifespan, der `app.state.cache/adapters/session_factory` mit
+    # echtem Redis/Postgres/httpx überschreibt und die Stubs aus
+    # `_fake_startup` wegwirft.
+    client = TestClient(patched_app)
+    resp = client.get("/api/v1/convert", params={"url": "https://tidal.com/track/1"})
     assert resp.status_code == 200
     body = resp.json()
     assert body["source"]["title"] == "Nightcall"
@@ -4273,26 +4277,26 @@ def test_convert_happy_path(patched_app):
 
 
 def test_convert_returns_cached(patched_app):
-    with TestClient(patched_app) as client:
-        client.get("/api/v1/convert", params={"url": "https://tidal.com/track/1"})
-        resp = client.get("/api/v1/convert", params={"url": "https://tidal.com/track/1"})
+    client = TestClient(patched_app)
+    client.get("/api/v1/convert", params={"url": "https://tidal.com/track/1"})
+    resp = client.get("/api/v1/convert", params={"url": "https://tidal.com/track/1"})
     body = resp.json()
     assert body["cache"]["hit"] is True
 
 
 def test_convert_unsupported_url_400(patched_app):
-    with TestClient(patched_app) as client:
-        resp = client.get("/api/v1/convert", params={"url": "https://example.com/foo"})
+    client = TestClient(patched_app)
+    resp = client.get("/api/v1/convert", params={"url": "https://example.com/foo"})
     assert resp.status_code == 400
     assert resp.json()["error"]["code"] == "unsupported_service"
 
 
 def test_convert_with_share_returns_short_id(patched_app):
-    with TestClient(patched_app) as client:
-        resp = client.get(
-            "/api/v1/convert",
-            params={"url": "https://tidal.com/track/1", "share": "true"},
-        )
+    client = TestClient(patched_app)
+    resp = client.get(
+        "/api/v1/convert",
+        params={"url": "https://tidal.com/track/1", "share": "true"},
+    )
     body = resp.json()
     assert body["share"] is not None
     assert len(body["share"]["id"]) == 6
@@ -4337,7 +4341,7 @@ async def convert(
         source_model = SourceContent(**source_dict)
         cache_info = CacheInfo(hit=True, ttl_seconds=await cache.ttl(cache_key))
     else:
-        pipeline = Pipeline(adapters, resolver_factory=None)
+        pipeline = Pipeline(adapters)
         outcome = await pipeline.convert(parsed)
 
         source_model = SourceContent(
