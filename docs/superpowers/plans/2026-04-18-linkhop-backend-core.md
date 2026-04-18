@@ -4067,7 +4067,7 @@ git commit -m "feat(backend): /api/v1/health endpoint"
 - Modify: `backend/src/linkhop/main.py`
 - Create: `backend/tests/routes/test_services.py`
 
-- [ ] **Step 19.1: Test — `tests/routes/test_services.py`**
+- [x] **Step 19.1: Test — `tests/routes/test_services.py`**
 
 ```python
 from fastapi.testclient import TestClient
@@ -4090,6 +4090,11 @@ def test_services_lists_enabled_adapters(monkeypatch):
     ids = {s["id"] for s in body["services"]}
     assert "spotify" in ids
     assert "deezer" in ids
+    # Stärker als reine ID-Prüfung — fängt Regressionen ab, bei denen name
+    # leer bliebe oder capabilities versehentlich auf [] kollabiert.
+    spotify = next(s for s in body["services"] if s["id"] == "spotify")
+    assert spotify["name"] == "Spotify"
+    assert "track" in spotify["capabilities"]
 
 
 def test_services_excludes_disabled(monkeypatch):
@@ -4106,7 +4111,7 @@ def test_services_excludes_disabled(monkeypatch):
     assert "spotify" not in ids
 ```
 
-- [ ] **Step 19.2: `src/linkhop/routes/services.py` schreiben**
+- [x] **Step 19.2: `src/linkhop/routes/services.py` schreiben**
 
 ```python
 from __future__ import annotations
@@ -4141,7 +4146,7 @@ async def list_services(request: Request) -> ServicesResponse:
     return ServicesResponse(services=entries)
 ```
 
-- [ ] **Step 19.3: Router registrieren in `main.py` (mit health zusammen)**
+- [x] **Step 19.3: Router registrieren in `main.py` (mit health zusammen)**
 
 ```python
 from linkhop.routes import health as health_route
@@ -4151,7 +4156,7 @@ from linkhop.routes import services as services_route
     app.include_router(services_route.router)
 ```
 
-- [ ] **Step 19.4: Tests ausführen**
+- [x] **Step 19.4: Tests ausführen**
 
 ```bash
 cd backend && pytest tests/routes/test_services.py -v
@@ -4159,12 +4164,24 @@ cd backend && pytest tests/routes/test_services.py -v
 
 Expected: `2 passed`.
 
-- [ ] **Step 19.5: Commit**
+- [x] **Step 19.5: Commit**
 
 ```bash
 git add backend/
 git commit -m "feat(backend): /api/v1/services endpoint"
 ```
+
+**Post-Implementation-Bilanz (2026-04-18):**
+- Implementer: 3 Dateien (1 neuer Route, 1 neuer Test, 1 `main.py`-Patch), 2 neue Tests, Full-Suite 141 passed (139 Baseline + 2).
+- Pre-Dispatch-Patches: **1** — Step-19.1-Tests auf Spotify-Creds-`monkeypatch` umgestellt, da der Task-17-Refactor Spotify ohne Creds aus `build_adapter_map` filtert. Commit: `f0162ca`.
+- Spec-Review: 0 Abweichungen (byte-identisch mit gepatchtem Plan).
+- Quality-Review: 0 C / 2 M / 1 L.
+- Akzeptiert: **M2** — `test_services_lists_enabled_adapters` zusätzlich auf `spotify["name"] == "Spotify"` und `"track" in spotify["capabilities"]`. Plan-Snippet entsprechend aktualisiert. Cheap+real stronger signal (keine externen Deps), konsistent mit Task-17-Policy (isinstance-Asserts).
+- Abgelehnt:
+  - **M1 (`_NAMES` → `adapter.display_name`):** Reale Sorge (Plan B fügt Tidal/YTM hinzu → Update-Vergesser-Risiko), aber Refactor würde `ServiceAdapter`-Protocol + zwei Adapter-Klassen + Route anfassen. In Plan A sind nur Spotify + Deezer relevant, beide in `_NAMES` vorhanden. Defer zu Plan B.
+  - **L1 (Comprehension statt `if/append`):** Nur Stil; Plan prescribes explicit form. Verbatim bleibt verbatim.
+- Laufende Tally: **107 findings / 58 rejected** über 19 Tasks.
+- Commits: `3a36887 feat(backend): /api/v1/services endpoint`, `b6f5a04 test(backend): strengthen /api/v1/services assertions`.
 
 ---
 
