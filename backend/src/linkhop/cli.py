@@ -46,7 +46,12 @@ def _make_async_session_factory():
 
 @key.command("create")
 @click.option("--note", default=None, help="Freitext, was der Key ist")
-@click.option("--override", type=int, default=None, help="Per-Minute-Override")
+@click.option(
+    "--override",
+    type=click.IntRange(min=1),
+    default=None,
+    help="Per-Minute-Override (>=1). 0/negativ wäre eine Selbst-DoS-Config.",
+)
 def key_create(note: str | None, override: int | None) -> None:
     async def _run():
         engine, factory = _make_async_session_factory()
