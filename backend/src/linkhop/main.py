@@ -14,6 +14,7 @@ from linkhop.errors import install_error_handlers
 from linkhop.routes import convert as convert_route
 from linkhop.routes import health as health_route
 from linkhop.routes import services as services_route
+from linkhop.routes import share as share_route
 
 
 @asynccontextmanager
@@ -53,6 +54,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health_route.router)
     app.include_router(services_route.router)
     app.include_router(convert_route.router)
+    app.include_router(share_route.router)
     return app
 
 
