@@ -3954,7 +3954,7 @@ Running Tally: **98 findings / 52 rejected über 17 Tasks**.
 - Create: `backend/tests/routes/__init__.py`
 - Create: `backend/tests/routes/test_health.py`
 
-- [ ] **Step 18.1: Test — `tests/routes/test_health.py`**
+- [x] **Step 18.1: Test — `tests/routes/test_health.py`**
 
 ```python
 from fastapi.testclient import TestClient
@@ -3976,21 +3976,21 @@ def test_health_returns_200_when_dependencies_ok(monkeypatch):
     assert "postgres" in body
 ```
 
-- [ ] **Step 18.2: `tests/routes/__init__.py` + Verzeichnis anlegen**
+- [x] **Step 18.2: `tests/routes/__init__.py` + Verzeichnis anlegen**
 
 ```bash
 mkdir -p backend/tests/routes
 touch backend/tests/routes/__init__.py
 ```
 
-- [ ] **Step 18.3: `src/linkhop/routes/__init__.py` anlegen (leer)**
+- [x] **Step 18.3: `src/linkhop/routes/__init__.py` anlegen (leer)**
 
 ```bash
 mkdir -p backend/src/linkhop/routes
 touch backend/src/linkhop/routes/__init__.py
 ```
 
-- [ ] **Step 18.4: `src/linkhop/routes/health.py` schreiben**
+- [x] **Step 18.4: `src/linkhop/routes/health.py` schreiben**
 
 ```python
 from __future__ import annotations
@@ -4005,7 +4005,7 @@ router = APIRouter(prefix="/api/v1", tags=["health"])
 
 
 @router.get("/health", response_model=HealthResponse)
-async def health(request: Request):
+async def health(request: Request) -> JSONResponse:
     redis_ok = await request.app.state.cache.ping()
     pg_ok = False
     try:
@@ -4021,7 +4021,7 @@ async def health(request: Request):
     return JSONResponse(status_code=code, content=body)
 ```
 
-- [ ] **Step 18.5: `main.py` — Router registrieren, innerhalb `create_app` vor Return**
+- [x] **Step 18.5: `main.py` — Router registrieren, innerhalb `create_app` vor Return**
 
 ```python
 from linkhop.routes import health as health_route
@@ -4029,7 +4029,7 @@ from linkhop.routes import health as health_route
     app.include_router(health_route.router)
 ```
 
-- [ ] **Step 18.6: Tests ausführen**
+- [x] **Step 18.6: Tests ausführen**
 
 ```bash
 cd backend && pytest tests/routes/test_health.py -v
@@ -4037,12 +4037,26 @@ cd backend && pytest tests/routes/test_health.py -v
 
 Expected: `1 passed`.
 
-- [ ] **Step 18.7: Commit**
+- [x] **Step 18.7: Commit**
 
 ```bash
 git add backend/
 git commit -m "feat(backend): /api/v1/health endpoint"
 ```
+
+**Post-Implementation-Bilanz (2026-04-18):**
+- Implementer: 5 Dateien erstellt/geändert, 1 neuer Test, Full-Suite 139 passed (138 Baseline + 1).
+- Pre-Dispatch-Patches: keine.
+- Spec-Review: 0 Abweichungen (byte-identisch mit Plan-Snippets).
+- Quality-Review: 0 C / 3 M / 3 L (inkl. L1 „Non-Finding").
+- Akzeptiert: **L2** — Return-Annotation `-> JSONResponse` auf `health()` (Konsistenz mit `cache.py`, 1-Wort-Diff). Plan-Snippet entsprechend aktualisiert.
+- Abgelehnt:
+  - **M1 (Test zu schwach):** Plan-Kommentar „Tolerant — echte Redis/Postgres laufen im Test nicht" ist explizite Entscheidung; Wiring-Smoke reicht hier. Echte Fakes sind Scope-Creep für einen 1-Test-Task.
+  - **M2 (`response_model` + `JSONResponse` überspringt Validierung):** Empirisch korrekt, aber OpenAPI-Schema bleibt korrekt. Plan wählte diese Variante bewusst für per-Status-Code-Steuerung. Umbau auf `Response`-Injection wäre Plan-Abweichung.
+  - **M3 (kein `log.warning(..., exc_info=True)` im `except`):** Task 24 (JSON-Logging) ist genau dafür vorgesehen. Jetzt einbauen = zweimal ändern.
+  - **L3 (Router-Prefix-Pattern):** Premature abstraction — refactor, wenn in Task 19 der zweite Router-Prefix sichtbar wird.
+- Laufende Tally: **104 Findings / 56 rejected** über 18 Tasks.
+- Commit: `7065d05 feat(backend): /api/v1/health endpoint`.
 
 ---
 
