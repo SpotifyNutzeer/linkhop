@@ -1,6 +1,7 @@
 import pytest
 
 from linkhop.adapters.base import AdapterCapabilities, AdapterError
+from linkhop.errors import SourceNotFoundError
 from linkhop.models.domain import ContentType, ResolvedContent, SearchHit
 from linkhop.pipeline import Pipeline
 from linkhop.url_parser import ParsedUrl
@@ -73,13 +74,13 @@ async def test_pipeline_source_adapter_not_found_raises():
     tidal = FakeAdapter("tidal", resolve_value=None)
     pipeline = Pipeline({"tidal": tidal})
 
-    with pytest.raises(LookupError):
+    with pytest.raises(SourceNotFoundError):
         await pipeline.convert(ParsedUrl("tidal", "track", "missing"))
 
 
 async def test_pipeline_unknown_source_service_raises():
     pipeline = Pipeline({"spotify": FakeAdapter("spotify")})
-    with pytest.raises(LookupError):
+    with pytest.raises(SourceNotFoundError):
         await pipeline.convert(ParsedUrl("tidal", "track", "1"))
 
 

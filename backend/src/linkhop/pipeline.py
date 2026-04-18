@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from linkhop.adapters.base import AdapterError, ServiceAdapter
+from linkhop.errors import SourceNotFoundError
 from linkhop.matching import score_candidate, threshold_status
 from linkhop.models.domain import ContentType, MatchType, ResolvedContent, SearchHit
 from linkhop.url_parser import ParsedUrl
@@ -34,11 +35,11 @@ class Pipeline:
     async def convert(self, parsed: ParsedUrl) -> ConvertOutcome:
         source_adapter = self._adapters.get(parsed.service)
         if source_adapter is None:
-            raise LookupError(f"no adapter for source service: {parsed.service}")
+            raise SourceNotFoundError(f"no adapter for source service: {parsed.service}")
 
         source = await source_adapter.resolve(parsed)
         if source is None:
-            raise LookupError(f"source not found: {parsed.service}/{parsed.type}/{parsed.id}")
+            raise SourceNotFoundError(f"source not found: {parsed.service}/{parsed.type}/{parsed.id}")
 
         target_ids = [sid for sid in self._adapters if sid != parsed.service]
         type_ = ContentType(parsed.type)
