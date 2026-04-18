@@ -22,7 +22,7 @@ class SourceContent(BaseModel):
 
 
 class TargetResult(BaseModel):
-    status: Literal["ok", "not_found", "error"]
+    status: Literal["ok", "ok_low", "not_found", "error"]
     url: str | None = None
     confidence: float | None = None
     match: MatchType | None = None
