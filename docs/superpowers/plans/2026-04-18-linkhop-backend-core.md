@@ -106,30 +106,30 @@ version = "0.1.0"
 description = "Music-link converter across streaming services"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi==0.115.*",
-    "uvicorn[standard]==0.32.*",
-    "pydantic==2.9.*",
-    "pydantic-settings==2.5.*",
+    "fastapi==0.136.*",
+    "uvicorn[standard]==0.44.*",
+    "pydantic==2.13.*",
+    "pydantic-settings==2.13.*",
     "sqlalchemy[asyncio]==2.0.*",
-    "asyncpg==0.29.*",
-    "alembic==1.13.*",
-    "redis==5.0.*",
-    "httpx==0.27.*",
-    "argon2-cffi==23.1.*",
-    "click==8.1.*",
-    "python-rapidjson==1.20",
+    "asyncpg==0.31.*",
+    "alembic==1.18.*",
+    "redis==7.4.*",
+    "httpx==0.28.*",
+    "argon2-cffi==25.1.*",
+    "click==8.3.*",
+    "python-rapidjson==1.23",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest==8.3.*",
-    "pytest-asyncio==0.24.*",
-    "pytest-cov==5.0.*",
-    "respx==0.21.*",
-    "fakeredis[async]==2.24.*",
-    "aiosqlite==0.20.*",
-    "ruff==0.6.*",
-    "mypy==1.11.*",
+    "pytest==9.0.*",
+    "pytest-asyncio==1.3.*",
+    "pytest-cov==7.1.*",
+    "respx==0.23.*",
+    "fakeredis[async]==2.35.*",
+    "aiosqlite==0.22.*",
+    "ruff==0.15.*",
+    "mypy==1.20.*",
 ]
 
 [project.scripts]
@@ -144,6 +144,7 @@ packages = ["src/linkhop"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 pythonpath = ["src"]
 testpaths = ["tests"]
 
@@ -192,13 +193,10 @@ def test_openapi_schema_available():
 - [ ] **Step 1.5: `conftest.py` schreiben**
 
 ```python
-import pytest
-
-
-@pytest.fixture(autouse=True)
-def anyio_backend():
-    return "asyncio"
+# Shared pytest fixtures. Add fixtures here as they're needed across test files.
 ```
+
+Notiz: Mit `asyncio_mode = "auto"` und `asyncio_default_fixture_loop_scope = "function"` in `pyproject.toml` übernimmt pytest-asyncio 1.x die Loop-Erzeugung. Ein expliziter `event_loop`- oder `anyio_backend`-Fixture-Override ist weder nötig noch erwünscht (pytest-asyncio 1.0 hat die `event_loop`-Fixture entfernt).
 
 - [ ] **Step 1.6: Dev-Deps installieren und Test ausführen**
 
@@ -3207,7 +3205,7 @@ def patched_app(monkeypatch):
             "deezer": StubAdapter("deezer", search_value=[]),
         }
 
-    asyncio.get_event_loop().run_until_complete(_fake_startup())
+    asyncio.run(_fake_startup())
     return app
 
 
@@ -3436,7 +3434,7 @@ def app_with_share():
             ]),
         }
 
-    asyncio.get_event_loop().run_until_complete(_startup())
+    asyncio.run(_startup())
     return app
 
 
@@ -3570,7 +3568,7 @@ def app_with_limits():
         )
         app.state.adapters = {"tidal": StubAdapter()}
 
-    asyncio.get_event_loop().run_until_complete(_startup())
+    asyncio.run(_startup())
     return app
 
 
@@ -3588,7 +3586,7 @@ def test_valid_key_uses_higher_limit(app_with_limits):
         async with app_with_limits.state.session_factory() as s:
             plain, _ = await ApiKeyService(s).create(note="test")
             return plain
-    plain = asyncio.get_event_loop().run_until_complete(_create_key())
+    plain = asyncio.run(_create_key())
 
     with TestClient(app_with_limits) as client:
         for _ in range(5):
