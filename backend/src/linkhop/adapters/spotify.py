@@ -11,6 +11,11 @@ from linkhop.models.domain import ContentType, MatchType, ResolvedContent, Searc
 from linkhop.url_parser import ParsedUrl
 
 
+def _strip_quotes(s: str) -> str:
+    # Spotify field queries use "..." as phrase delimiters; embedded quotes break the parser.
+    return s.replace('"', "")
+
+
 class SpotifyAdapter:
     service_id = "spotify"
     capabilities = AdapterCapabilities(track=True, album=True, artist=True)
@@ -115,15 +120,17 @@ class SpotifyAdapter:
             return await self._search_tracks(f"isrc:{meta.isrc}", match="isrc")
         if target_type == ContentType.ALBUM and meta.upc:
             return await self._search_albums(f"upc:{meta.upc}", match="upc")
+        title = _strip_quotes(meta.title)
+        artist_clause = (
+            f' artist:"{_strip_quotes(meta.artists[0])}"' if meta.artists else ""
+        )
         if target_type == ContentType.TRACK:
-            q = f'track:"{meta.title}" artist:"{meta.artists[0] if meta.artists else ""}"'
-            return await self._search_tracks(q, match="metadata")
+            return await self._search_tracks(f'track:"{title}"{artist_clause}', match="metadata")
         if target_type == ContentType.ALBUM:
-            q = f'album:"{meta.title}" artist:"{meta.artists[0] if meta.artists else ""}"'
-            return await self._search_albums(q, match="metadata")
+            return await self._search_albums(f'album:"{title}"{artist_clause}', match="metadata")
         if target_type == ContentType.ARTIST:
-            q = f'artist:"{meta.title}"'
-            return await self._search_artists(q)
+            # ResolvedContent for an artist stores the name in `title` (see resolve()).
+            return await self._search_artists(f'artist:"{title}"')
         return []
 
     async def _search_tracks(self, q: str, match: MatchType) -> list[SearchHit]:
@@ -141,7 +148,7 @@ class SpotifyAdapter:
                 service=self.service_id,
                 id=it["id"],
                 url=it["external_urls"]["spotify"],
-                confidence=1.0 if match == "isrc" else 0.0,  # Scoring erfolgt im Matcher
+                confidence=1.0 if match == "isrc" else 0.0,  # matcher assigns final score
                 match=match,
             )
             for it in items

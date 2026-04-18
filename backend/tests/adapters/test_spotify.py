@@ -168,3 +168,58 @@ async def test_search_by_upc_returns_album_hit(adapter: SpotifyAdapter):
     assert hits[0].match == "upc"
     assert hits[0].confidence == 1.0
     assert hits[0].service == "spotify"
+
+
+@respx.mock
+async def test_search_artist_returns_metadata_hit(adapter: SpotifyAdapter):
+    respx.post("https://accounts.spotify.com/api/token").respond(json=fix("spotify_token.json"))
+    respx.get("https://api.spotify.com/v1/search").respond(json=fix("spotify_search_artist.json"))
+
+    source = ResolvedContent(
+        service="tidal", type=ContentType.ARTIST, id="1",
+        url="https://tidal.com/artist/1", title="Kavinsky",
+        artists=("Kavinsky",), album=None,
+        duration_ms=None, isrc=None, upc=None, artwork="",
+    )
+    hits = await adapter.search(source, ContentType.ARTIST)
+    assert len(hits) == 1
+    assert hits[0].match == "metadata"
+    assert hits[0].confidence == 0.0
+    assert hits[0].service == "spotify"
+
+
+@respx.mock
+async def test_search_query_strips_embedded_quotes(adapter: SpotifyAdapter):
+    # Titles like `She Said "Yeah"` would break the Spotify phrase-query syntax.
+    respx.post("https://accounts.spotify.com/api/token").respond(json=fix("spotify_token.json"))
+    search_route = respx.get("https://api.spotify.com/v1/search").respond(
+        json=fix("spotify_search_track.json")
+    )
+    source = ResolvedContent(
+        service="tidal", type=ContentType.TRACK, id="1",
+        url="https://tidal.com/track/1", title='She Said "Yeah"',
+        artists=('AC/DC "The Band"',), album=None,
+        duration_ms=None, isrc=None, upc=None, artwork="",
+    )
+    await adapter.search(source, ContentType.TRACK)
+    q = search_route.calls.last.request.url.params["q"]
+    assert q == 'track:"She Said Yeah" artist:"AC/DC The Band"'
+
+
+@respx.mock
+async def test_search_omits_artist_clause_when_artists_empty(adapter: SpotifyAdapter):
+    # Empty artists tuple must not produce a no-op `artist:""` clause.
+    respx.post("https://accounts.spotify.com/api/token").respond(json=fix("spotify_token.json"))
+    search_route = respx.get("https://api.spotify.com/v1/search").respond(
+        json=fix("spotify_search_track.json")
+    )
+    source = ResolvedContent(
+        service="tidal", type=ContentType.TRACK, id="1",
+        url="https://tidal.com/track/1", title="Nightcall",
+        artists=(), album=None,
+        duration_ms=None, isrc=None, upc=None, artwork="",
+    )
+    await adapter.search(source, ContentType.TRACK)
+    q = search_route.calls.last.request.url.params["q"]
+    assert q == 'track:"Nightcall"'
+    assert "artist:" not in q

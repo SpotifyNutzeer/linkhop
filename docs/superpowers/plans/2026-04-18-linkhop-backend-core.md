@@ -1615,8 +1615,9 @@ git commit -m "feat(backend): Spotify adapter — resolve"
 - Create: `backend/tests/fixtures/spotify_search_track.json`
 - Modify: `backend/tests/adapters/test_spotify.py`
 
-- [ ] **Step 9.1: Fixture schreiben — `tests/fixtures/spotify_search_track.json`**
+- [ ] **Step 9.1: Fixtures schreiben**
 
+`tests/fixtures/spotify_search_track.json`:
 ```json
 {
   "tracks": {
@@ -1628,6 +1629,37 @@ git commit -m "feat(backend): Spotify adapter — resolve"
         "external_ids": { "isrc": "FR6V81200001" },
         "external_urls": { "spotify": "https://open.spotify.com/track/6habFhsOp2NvshLv26DqMb" },
         "artists": [ { "name": "Kavinsky" } ]
+      }
+    ]
+  }
+}
+```
+
+`tests/fixtures/spotify_search_album.json`:
+```json
+{
+  "albums": {
+    "items": [
+      {
+        "id": "2dIGnmEIy1WZIcZCFSj6i8",
+        "name": "OutRun",
+        "external_urls": { "spotify": "https://open.spotify.com/album/2dIGnmEIy1WZIcZCFSj6i8" },
+        "artists": [ { "name": "Kavinsky" } ]
+      }
+    ]
+  }
+}
+```
+
+`tests/fixtures/spotify_search_artist.json`:
+```json
+{
+  "artists": {
+    "items": [
+      {
+        "id": "0du5cEVh5yTK9QJze8zA0C",
+        "name": "Kavinsky",
+        "external_urls": { "spotify": "https://open.spotify.com/artist/0du5cEVh5yTK9QJze8zA0C" }
       }
     ]
   }
@@ -1672,6 +1704,79 @@ async def test_search_falls_back_to_metadata(adapter: SpotifyAdapter):
     hits = await adapter.search(source, ContentType.TRACK)
     assert len(hits) >= 1
     assert hits[0].match == "metadata"
+
+
+@respx.mock
+async def test_search_by_upc_returns_album_hit(adapter: SpotifyAdapter):
+    respx.post("https://accounts.spotify.com/api/token").respond(json=fix("spotify_token.json"))
+    respx.get("https://api.spotify.com/v1/search").respond(json=fix("spotify_search_album.json"))
+
+    source = ResolvedContent(
+        service="tidal", type=ContentType.ALBUM, id="1",
+        url="https://tidal.com/album/1", title="OutRun",
+        artists=("Kavinsky",), album=None,
+        duration_ms=None, isrc=None, upc="602537360697", artwork="",
+    )
+    hits = await adapter.search(source, ContentType.ALBUM)
+    assert len(hits) == 1
+    assert hits[0].match == "upc"
+    assert hits[0].confidence == 1.0
+    assert hits[0].service == "spotify"
+
+
+@respx.mock
+async def test_search_artist_returns_metadata_hit(adapter: SpotifyAdapter):
+    respx.post("https://accounts.spotify.com/api/token").respond(json=fix("spotify_token.json"))
+    respx.get("https://api.spotify.com/v1/search").respond(json=fix("spotify_search_artist.json"))
+
+    source = ResolvedContent(
+        service="tidal", type=ContentType.ARTIST, id="1",
+        url="https://tidal.com/artist/1", title="Kavinsky",
+        artists=("Kavinsky",), album=None,
+        duration_ms=None, isrc=None, upc=None, artwork="",
+    )
+    hits = await adapter.search(source, ContentType.ARTIST)
+    assert len(hits) == 1
+    assert hits[0].match == "metadata"
+    assert hits[0].confidence == 0.0
+    assert hits[0].service == "spotify"
+
+
+@respx.mock
+async def test_search_query_strips_embedded_quotes(adapter: SpotifyAdapter):
+    # Titles like `She Said "Yeah"` would break the Spotify phrase-query syntax.
+    respx.post("https://accounts.spotify.com/api/token").respond(json=fix("spotify_token.json"))
+    search_route = respx.get("https://api.spotify.com/v1/search").respond(
+        json=fix("spotify_search_track.json")
+    )
+    source = ResolvedContent(
+        service="tidal", type=ContentType.TRACK, id="1",
+        url="https://tidal.com/track/1", title='She Said "Yeah"',
+        artists=('AC/DC "The Band"',), album=None,
+        duration_ms=None, isrc=None, upc=None, artwork="",
+    )
+    await adapter.search(source, ContentType.TRACK)
+    q = search_route.calls.last.request.url.params["q"]
+    assert q == 'track:"She Said Yeah" artist:"AC/DC The Band"'
+
+
+@respx.mock
+async def test_search_omits_artist_clause_when_artists_empty(adapter: SpotifyAdapter):
+    # Empty artists tuple must not produce a no-op `artist:""` clause.
+    respx.post("https://accounts.spotify.com/api/token").respond(json=fix("spotify_token.json"))
+    search_route = respx.get("https://api.spotify.com/v1/search").respond(
+        json=fix("spotify_search_track.json")
+    )
+    source = ResolvedContent(
+        service="tidal", type=ContentType.TRACK, id="1",
+        url="https://tidal.com/track/1", title="Nightcall",
+        artists=(), album=None,
+        duration_ms=None, isrc=None, upc=None, artwork="",
+    )
+    await adapter.search(source, ContentType.TRACK)
+    q = search_route.calls.last.request.url.params["q"]
+    assert q == 'track:"Nightcall"'
+    assert "artist:" not in q
 ```
 
 - [ ] **Step 9.3: Test laufen — FAIL (`NotImplementedError`)**
@@ -1682,24 +1787,39 @@ cd backend && pytest tests/adapters/test_spotify.py -v
 
 - [ ] **Step 9.4: `search()` in `spotify.py` implementieren — ersetze `raise NotImplementedError`:**
 
+Zunächst den `MatchType`-Import zu den Domain-Imports ergänzen und den Helfer `_strip_quotes` auf Modulebene (vor der Klasse) definieren:
+
+```python
+from linkhop.models.domain import ContentType, MatchType, ResolvedContent, SearchHit
+
+
+def _strip_quotes(s: str) -> str:
+    # Spotify field queries use "..." as phrase delimiters; embedded quotes break the parser.
+    return s.replace('"', "")
+```
+
+Dann `search` und die drei Helfer einfügen:
+
 ```python
     async def search(self, meta: ResolvedContent, target_type: ContentType) -> list[SearchHit]:
         if target_type == ContentType.TRACK and meta.isrc:
             return await self._search_tracks(f"isrc:{meta.isrc}", match="isrc")
         if target_type == ContentType.ALBUM and meta.upc:
             return await self._search_albums(f"upc:{meta.upc}", match="upc")
+        title = _strip_quotes(meta.title)
+        artist_clause = (
+            f' artist:"{_strip_quotes(meta.artists[0])}"' if meta.artists else ""
+        )
         if target_type == ContentType.TRACK:
-            q = f'track:"{meta.title}" artist:"{meta.artists[0] if meta.artists else ""}"'
-            return await self._search_tracks(q, match="metadata")
+            return await self._search_tracks(f'track:"{title}"{artist_clause}', match="metadata")
         if target_type == ContentType.ALBUM:
-            q = f'album:"{meta.title}" artist:"{meta.artists[0] if meta.artists else ""}"'
-            return await self._search_albums(q, match="metadata")
+            return await self._search_albums(f'album:"{title}"{artist_clause}', match="metadata")
         if target_type == ContentType.ARTIST:
-            q = f'artist:"{meta.title}"'
-            return await self._search_artists(q)
+            # ResolvedContent for an artist stores the name in `title` (see resolve()).
+            return await self._search_artists(f'artist:"{title}"')
         return []
 
-    async def _search_tracks(self, q: str, match: str) -> list[SearchHit]:
+    async def _search_tracks(self, q: str, match: MatchType) -> list[SearchHit]:
         token = await self._ensure_token()
         resp = await self._http.get(
             f"{self._API}/search",
@@ -1714,13 +1834,13 @@ cd backend && pytest tests/adapters/test_spotify.py -v
                 service=self.service_id,
                 id=it["id"],
                 url=it["external_urls"]["spotify"],
-                confidence=1.0 if match == "isrc" else 0.0,  # Scoring erfolgt im Matcher
+                confidence=1.0 if match == "isrc" else 0.0,  # matcher assigns final score
                 match=match,
             )
             for it in items
         ]
 
-    async def _search_albums(self, q: str, match: str) -> list[SearchHit]:
+    async def _search_albums(self, q: str, match: MatchType) -> list[SearchHit]:
         token = await self._ensure_token()
         resp = await self._http.get(
             f"{self._API}/search",
@@ -1769,7 +1889,7 @@ cd backend && pytest tests/adapters/test_spotify.py -v
 cd backend && pytest tests/adapters/test_spotify.py -v
 ```
 
-Expected: `6 passed`.
+Expected: `14 passed` (8 bestehend aus Task 8 + 6 neu: track-isrc, track-metadata-fallback, album-upc, artist-metadata, quote-stripping, empty-artists-omits-clause).
 
 - [ ] **Step 9.6: Commit**
 
