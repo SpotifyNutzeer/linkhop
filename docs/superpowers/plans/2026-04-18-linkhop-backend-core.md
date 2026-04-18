@@ -4398,7 +4398,7 @@ async def convert(
             )
         host = request.headers.get("host", "")
         scheme = request.url.scheme
-        share_info = ShareInfo(id=sid, url=f"{scheme}://{host}/c/{sid}")
+        share_info = ShareInfo(id=sid, url=f"{scheme}://{host}/api/v1/c/{sid}")
 
     return ConvertResponse(
         source=source_model,
@@ -4458,7 +4458,7 @@ git commit -m "feat(backend): /api/v1/convert endpoint with cache and share"
 - Modify: `backend/src/linkhop/main.py`
 - Create: `backend/tests/routes/test_share.py`
 
-- [ ] **Step 21.1: Test — `tests/routes/test_share.py`**
+- [x] **Step 21.1: Test — `tests/routes/test_share.py`**
 
 ```python
 # Verwendet den gleichen `patched_app`-Fixture-Pattern wie test_convert.py.
@@ -4540,9 +4540,12 @@ def test_share_200_after_create(app_with_share):
     assert get_resp.status_code == 200
     body = get_resp.json()
     assert body["source"]["title"] == "N"
+    # Share-Lookup ruft convert_view mit share=False; die Antwort darf also
+    # keinen verschachtelten Share-Block mehr enthalten.
+    assert body["share"] is None
 ```
 
-- [ ] **Step 21.2: `src/linkhop/routes/share.py` schreiben**
+- [x] **Step 21.2: `src/linkhop/routes/share.py` schreiben**
 
 ```python
 from __future__ import annotations
@@ -4550,23 +4553,25 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 
 from linkhop.errors import AppError
+from linkhop.models.api import ConvertResponse
 from linkhop.routes.convert import convert as convert_view
 from linkhop.short_id import ShortIdService
 
 router = APIRouter(prefix="/api/v1", tags=["share"])
 
 
-@router.get("/c/{short_id}")
+@router.get("/c/{short_id}", response_model=ConvertResponse)
 async def open_share(short_id: str, request: Request):
     async with request.app.state.session_factory() as session:
         svc = ShortIdService(session)
         row = await svc.lookup(short_id)
-    if row is None:
-        raise AppError(code="share_not_found", status=404, message=f"short id not found: {short_id}")
-    return await convert_view(request, url=row.source_url, targets=None, share=False)
+        if row is None:
+            raise AppError(code="share_not_found", status=404, message=f"short id not found: {short_id}")
+        source_url = row.source_url
+    return await convert_view(request, url=source_url, targets=None, share=False)
 ```
 
-- [ ] **Step 21.3: Router registrieren in `main.py`**
+- [x] **Step 21.3: Router registrieren in `main.py`**
 
 ```python
 from linkhop.routes import share as share_route
@@ -4574,7 +4579,7 @@ from linkhop.routes import share as share_route
     app.include_router(share_route.router)
 ```
 
-- [ ] **Step 21.4: Tests ausführen**
+- [x] **Step 21.4: Tests ausführen**
 
 ```bash
 cd backend && pytest tests/routes/test_share.py -v
@@ -4582,12 +4587,26 @@ cd backend && pytest tests/routes/test_share.py -v
 
 Expected: `2 passed`.
 
-- [ ] **Step 21.5: Commit**
+- [x] **Step 21.5: Commit**
 
 ```bash
 git add backend/
 git commit -m "feat(backend): /api/v1/c/{short_id} share lookup"
 ```
+
+### Post-Implementation-Bilanz Task 21 (2026-04-19)
+
+**Dispatch-Patch:** `105016a` — `TestClient(app_with_share)` ohne `with`-Block (Lifespan würde Stubs überschreiben), wie in Task 20.
+
+**Commits:**
+- `14d862f` feat: `/api/v1/c/{short_id}` share lookup (verbatim Implementer-Output)
+- `a9403f7` fix: `/api/v1` Prefix in Share-URL (`convert.py:84`) — Task-20-Legacy-Bug, Test akzeptierte beide Formen
+- `20d8d58` fix: share.py härten (M2: `source_url` innerhalb Session; M3: `response_model=ConvertResponse`)
+- `77026b1` test: URL-Prefix-Assertion + `body["share"] is None` in test_share
+
+**Tests:** 147 grün (+2 in test_share.py, vorher 145 nach Task 20).
+
+**Review-Findings:** 7 (2C/3M/2L). **Accepted:** 4 (C1 convert-prefix-Bug, M2 detached-row-Härtung, M3 response_model, L1 share-is-None-Assertion). **Rejected:** 3 — C2 (Redis-Cross-Loop theoretisch, empirisch nicht getriggert — fakeredis verträgt es), M1 (Router-Duplikat-Prefix ist FastAPI-idiomatisch), L2 (rate-limit-scope ist Task 22). **Tally gesamt:** 128 Findings / 67 rejected.
 
 ---
 
