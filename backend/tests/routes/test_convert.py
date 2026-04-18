@@ -81,10 +81,14 @@ def test_convert_happy_path(patched_app):
 
 def test_convert_returns_cached(patched_app):
     client = TestClient(patched_app)
-    client.get("/api/v1/convert", params={"url": "https://tidal.com/track/1"})
+    first = client.get("/api/v1/convert", params={"url": "https://tidal.com/track/1"}).json()
     resp = client.get("/api/v1/convert", params={"url": "https://tidal.com/track/1"})
     body = resp.json()
     assert body["cache"]["hit"] is True
+    # Stärker als reine hit-Prüfung — fängt Bugs, bei denen der Cache-Pfad
+    # zwar als Hit gemeldet wird, aber andere (z.B. leere) Payloads liefert.
+    assert body["source"] == first["source"]
+    assert body["targets"] == first["targets"]
 
 
 def test_convert_unsupported_url_400(patched_app):
@@ -103,3 +107,6 @@ def test_convert_with_share_returns_short_id(patched_app):
     body = resp.json()
     assert body["share"] is not None
     assert len(body["share"]["id"]) == 6
+    # Prüfe Pfad-Form, damit Regressionen an scheme/host (leerer Host-Header,
+    # fehlendes /c/-Prefix) nicht stumm den 6-Zeichen-Check passieren.
+    assert body["share"]["url"].endswith(f"/c/{body['share']['id']}")
