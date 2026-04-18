@@ -4192,7 +4192,7 @@ git commit -m "feat(backend): /api/v1/services endpoint"
 - Modify: `backend/src/linkhop/main.py`
 - Create: `backend/tests/routes/test_convert.py`
 
-- [ ] **Step 20.1: Test — `tests/routes/test_convert.py`**
+- [x] **Step 20.1: Test — `tests/routes/test_convert.py`**
 
 ```python
 import asyncio
@@ -4278,10 +4278,14 @@ def test_convert_happy_path(patched_app):
 
 def test_convert_returns_cached(patched_app):
     client = TestClient(patched_app)
-    client.get("/api/v1/convert", params={"url": "https://tidal.com/track/1"})
+    first = client.get("/api/v1/convert", params={"url": "https://tidal.com/track/1"}).json()
     resp = client.get("/api/v1/convert", params={"url": "https://tidal.com/track/1"})
     body = resp.json()
     assert body["cache"]["hit"] is True
+    # Stärker als reine hit-Prüfung — fängt Bugs, bei denen der Cache-Pfad
+    # zwar als Hit gemeldet wird, aber andere (z.B. leere) Payloads liefert.
+    assert body["source"] == first["source"]
+    assert body["targets"] == first["targets"]
 
 
 def test_convert_unsupported_url_400(patched_app):
@@ -4300,9 +4304,12 @@ def test_convert_with_share_returns_short_id(patched_app):
     body = resp.json()
     assert body["share"] is not None
     assert len(body["share"]["id"]) == 6
+    # Prüfe Pfad-Form, damit Regressionen an scheme/host (leerer Host-Header,
+    # fehlendes /c/-Prefix) nicht stumm den 6-Zeichen-Check passieren.
+    assert body["share"]["url"].endswith(f"/c/{body['share']['id']}")
 ```
 
-- [ ] **Step 20.2: `src/linkhop/routes/convert.py` schreiben**
+- [x] **Step 20.2: `src/linkhop/routes/convert.py` schreiben**
 
 ```python
 from __future__ import annotations
@@ -4335,11 +4342,14 @@ async def convert(
 
     adapters = request.app.state.adapters
 
-    if cached:
+    if cached is not None:
         source_dict = cached["source"]
         targets_dict = {k: TargetResult(**v) for k, v in cached["targets"].items()}
         source_model = SourceContent(**source_dict)
-        cache_info = CacheInfo(hit=True, ttl_seconds=await cache.ttl(cache_key))
+        # Redis TTL returns -2 when the key just expired between get and ttl
+        # (and -1 when no TTL is set). Neither is a meaningful number to leak
+        # to API clients, so clamp to 0.
+        cache_info = CacheInfo(hit=True, ttl_seconds=max(0, await cache.ttl(cache_key)))
     else:
         pipeline = Pipeline(adapters)
         outcome = await pipeline.convert(parsed)
@@ -4398,7 +4408,7 @@ async def convert(
     )
 ```
 
-- [ ] **Step 20.3: Router in `main.py` registrieren**
+- [x] **Step 20.3: Router in `main.py` registrieren**
 
 ```python
 from linkhop.routes import convert as convert_route
@@ -4406,7 +4416,7 @@ from linkhop.routes import convert as convert_route
     app.include_router(convert_route.router)
 ```
 
-- [ ] **Step 20.4: Tests ausführen**
+- [x] **Step 20.4: Tests ausführen**
 
 ```bash
 cd backend && pytest tests/routes/test_convert.py -v
@@ -4414,12 +4424,30 @@ cd backend && pytest tests/routes/test_convert.py -v
 
 Expected: `4 passed`.
 
-- [ ] **Step 20.5: Commit**
+- [x] **Step 20.5: Commit**
 
 ```bash
 git add backend/
 git commit -m "feat(backend): /api/v1/convert endpoint with cache and share"
 ```
+
+**Post-Implementation-Bilanz (2026-04-19):**
+- Implementer: 3 Dateien (1 Route, 1 Test, 1 `main.py`), 4 neue Tests, Full-Suite 145 passed (141 Baseline + 4).
+- Pre-Dispatch-Patches: **3** — (a) `Pipeline(adapters, resolver_factory=None)` → `Pipeline(adapters)` (TypeError: Signature existiert seit Task 12 ohne `resolver_factory`), (b) `with TestClient(patched_app) as client:` → `client = TestClient(patched_app)` in allen 4 Tests (echter Lifespan hätte alle Fixture-Stubs überschrieben), (c) `TargetResult.status` um `"ok_low"` erweitert in `models/api.py` + Task-4-Snippet (Task-11-Pipeline kann `ok_low` produzieren, pydantic hätte 500t). Commits: `649ffaa` (Code-Fix `ok_low`), `2550633` (Plan-Patches).
+- Known risk: `fakeredis.aioredis.FakeRedis()` cross-loop-Binding (Fixture erzeugt im `asyncio.run`-Loop, TestClient nutzt eigenen Loop). **Empirisch nicht ausgelöst** — vier Tests passieren grün inkl. Cache-Hit-Pfad, der Redis zweimal aus TestClient-Loop ansteuert.
+- Spec-Review: 0 Abweichungen (byte-identisch mit gepatchtem Plan).
+- Quality-Review: 1 C / 3 M / 3 L.
+- Akzeptiert: 
+  - **M1:** `if cached:` → `if cached is not None:` (korrektes Present-in-Cache-Idiom).
+  - **M2:** `ttl_seconds=max(0, await cache.ttl(cache_key))` (Redis `-2`/`-1`-Sentinel darf nicht an Client leaken).
+  - **M3:** `test_convert_returns_cached` zusätzlich auf `body["source"] == first["source"]` und `body["targets"] == first["targets"]` (Cache-Payload-Korruption würde sonst still durchgehen).
+  - **L2:** `test_convert_with_share_returns_short_id` zusätzlich `body["share"]["url"].endswith(f"/c/{id}")` (1-Zeile Versicherung gegen Scheme/Host/Path-Drift).
+- Abgelehnt:
+  - **C1 (`request.url.scheme` leakt `http://` hinter TLS-Proxy):** Downgrade C→L, weil: (i) kein Route-Handler-Bug, (ii) Share-URLs werden nicht persistiert, (iii) Deployment-Concern → Task 25 (Dockerfile) via `uvicorn --proxy-headers` oder später ein `public_base_url`-Setting. Kein 500/Corruption/Security-Issue.
+  - **L1 (leerer Host-Header → `http:///c/<sid>`):** Defense gegen RFC-widrige Clients; scope-creep.
+  - **L3 (Cache ohne Schema-Version):** Rolling-Deploy-Sorge, aber premature für Plan A.
+- Laufende Tally: **114 findings / 61 rejected** über 20 Tasks.
+- Commits: `bdce85e feat(backend): /api/v1/convert`, `8daa720 fix(backend): guard cache path`, `867090c test(backend): strengthen assertions`.
 
 ---
 
