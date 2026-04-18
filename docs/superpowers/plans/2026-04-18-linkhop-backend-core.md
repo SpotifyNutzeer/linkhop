@@ -4522,19 +4522,21 @@ def app_with_share():
 
 
 def test_share_404_for_unknown(app_with_share):
-    with TestClient(app_with_share) as client:
-        resp = client.get("/api/v1/c/notthere")
+    # Wie in Task 20: KEIN `with`-Block, sonst triggert FastAPI den echten
+    # Lifespan, der app.state.cache/adapters/session_factory überschreibt.
+    client = TestClient(app_with_share)
+    resp = client.get("/api/v1/c/notthere")
     assert resp.status_code == 404
 
 
 def test_share_200_after_create(app_with_share):
-    with TestClient(app_with_share) as client:
-        create_resp = client.get(
-            "/api/v1/convert",
-            params={"url": "https://tidal.com/track/1", "share": "true"},
-        )
-        sid = create_resp.json()["share"]["id"]
-        get_resp = client.get(f"/api/v1/c/{sid}")
+    client = TestClient(app_with_share)
+    create_resp = client.get(
+        "/api/v1/convert",
+        params={"url": "https://tidal.com/track/1", "share": "true"},
+    )
+    sid = create_resp.json()["share"]["id"]
+    get_resp = client.get(f"/api/v1/c/{sid}")
     assert get_resp.status_code == 200
     body = get_resp.json()
     assert body["source"]["title"] == "N"
