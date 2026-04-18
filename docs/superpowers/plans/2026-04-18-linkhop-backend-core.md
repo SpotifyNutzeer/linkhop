@@ -4618,7 +4618,7 @@ git commit -m "feat(backend): /api/v1/c/{short_id} share lookup"
 - Modify: `backend/src/linkhop/routes/convert.py`
 - Create: `backend/tests/test_middleware.py`
 
-- [ ] **Step 22.1: Test — `tests/test_middleware.py`**
+- [x] **Step 22.1: Test — `tests/test_middleware.py`**
 
 ```python
 import asyncio
@@ -4708,7 +4708,7 @@ def test_valid_key_uses_higher_limit(app_with_limits):
         assert r.status_code == 200
 ```
 
-- [ ] **Step 22.2: `src/linkhop/middleware.py` schreiben**
+- [x] **Step 22.2: `src/linkhop/middleware.py` schreiben**
 
 ```python
 from __future__ import annotations
@@ -4750,7 +4750,7 @@ async def enforce_rate_limit(
     return {"api_key_id": key_record.id if key_record else None}
 ```
 
-- [ ] **Step 22.3: `main.py` — Ratelimiter im Lifespan aufsetzen**
+- [x] **Step 22.3: `main.py` — Ratelimiter im Lifespan aufsetzen**
 
 Füge zu `lifespan` hinzu, nach `app.state.cache = ...`:
 
@@ -4763,7 +4763,7 @@ Füge zu `lifespan` hinzu, nach `app.state.cache = ...`:
     )
 ```
 
-- [ ] **Step 22.4: `routes/convert.py` — Dependency an `GET /convert` + `GET /c/...` hängen**
+- [x] **Step 22.4: `routes/convert.py` — Dependency an `GET /convert` + `GET /c/...` hängen**
 
 In `routes/convert.py`, Signatur von `convert()` erweitern:
 
@@ -4784,7 +4784,7 @@ async def convert(
 
 Analog in `routes/share.py` an `open_share`.
 
-- [ ] **Step 22.5: Tests ausführen**
+- [x] **Step 22.5: Tests ausführen**
 
 ```bash
 cd backend && pytest tests/test_middleware.py tests/routes/ -v
@@ -4792,12 +4792,27 @@ cd backend && pytest tests/test_middleware.py tests/routes/ -v
 
 Expected: alle grün.
 
-- [ ] **Step 22.6: Commit**
+- [x] **Step 22.6: Commit**
 
 ```bash
 git add backend/
 git commit -m "feat(backend): rate-limit middleware + API-key auth"
 ```
+
+### Post-Implementation-Bilanz Task 22 (2026-04-19)
+
+**Dispatch-Patch:** `a4e4613` — beide Tests ohne `with TestClient(...)`-Block (Lifespan würde sonst die Fixtures + den in `asyncio.run(_create_key())` angelegten API-Key-Schlüssel wegwerfen).
+
+**Commits:**
+- `ae0ad8b` feat: middleware + lifespan + Depends + fixture-Stubs (verbatim Implementer-Output)
+- `bfe674d` fix: L5 return-type `dict | None` → `dict`, L6 settings-single-source in Test-Fixture, L1 unused `SearchHit` import
+- `535237c` test: M9 — `test_invalid_key_returns_401` deckt bisher ungetestete 401-Branche ab
+
+**Tests:** 150 grün (+3 in tests/test_middleware.py).
+
+**Review-Findings:** 19 (2C/12M/5L; M8/L2/L7 vom Reviewer self-withdrawn). **Accepted:** 4 (M9, L1, L5, L6). **Deferred → Task 25:** C1 (proxy-IP-trust via `uvicorn --proxy-headers`) und M12 (scheme hinter TLS-proxy — gleicher Fix). **Deferred → Doc-Note hier:** M11 (share.py ruft convert_view als plain function, Depends auf /convert werden nicht re-run; aktuell korrekt, aber fragil falls später Auth-Depends auf /convert). **Rejected:** 12 — C2 (Redis fail-open propagiert 500 nicht stumm; Fixed-Window-Burst ist Task-15-Design, nicht Task-22-Regression), M1 (leerer Header = nicht gesetzt), M2 (argon2-Kosten sind bewusste Wahl), M3 (argon2-flood-DoS → eigener Auth-Hardening-Task), M4 (Lifespan-Failure = App tot, kein Härten nötig), M5 (Task-14-Artefakt), M6 (empirisch robust, globaler Refactor nicht in Task 22), M7 (Test testet Limit, nicht Target-Vollständigkeit), M10 (Pattern für Logging-Integration), L4 (Nit). **Tally gesamt:** 147 Findings / 78 rejected.
+
+**Hazard-Note für spätere Tasks (M11):** `routes/share.py::open_share` ruft `convert_view(request, …)` als normale Python-Funktion auf. FastAPI-Dependencies auf `convert()` (aktuell nur `enforce_rate_limit`) werden dabei **nicht** erneut ausgeführt → single rate-limit charge pro Share-Access, wie gewünscht. Wenn in einem künftigen Task eine zweite Dependency auf `/convert` kommt (z.B. Auth, Request-ID, Audit-Log), muss `share.py` explizit angepasst werden, sonst wird sie auf dem Share-Pfad lautlos übersprungen.
 
 ---
 
@@ -5076,6 +5091,14 @@ git commit -m "feat(backend): json-structured logging"
 - Create: `backend/Dockerfile`
 - Create: `backend/docker-compose.yml` (für lokale Entwicklung)
 - Create: `backend/scripts/dev.sh`
+
+**Aus Task 22 hereingezogen (Defer-Findings C1 + M12):** Der uvicorn-Start
+muss `--proxy-headers` und `--forwarded-allow-ips=<trusted-cidr>` setzen,
+sonst sieht `request.client.host` in `enforce_rate_limit` nur die Proxy-IP
+→ alle anonymen Requests landen in einem Bucket, und `request.url.scheme`
+bleibt `http` obwohl der Proxy TLS terminiert (→ Share-URLs mit `http://`).
+Das CMD unten enthält die Flags nicht — beim Durchziehen von Task 25 bitte
+ergänzen oder eine bewusste Entscheidung dagegen in diese Sektion schreiben.
 
 - [ ] **Step 25.1: `backend/Dockerfile`**
 
