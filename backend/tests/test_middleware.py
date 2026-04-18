@@ -87,3 +87,17 @@ def test_valid_key_uses_higher_limit(app_with_limits):
             headers={"X-API-Key": plain},
         )
         assert r.status_code == 200
+
+
+def test_invalid_key_returns_401(app_with_limits):
+    # Deckt die 401-Branche in enforce_rate_limit ab — vorher ungetestet,
+    # sodass eine Regression (z.B. Verify-Ergebnis fälschlich ignoriert) still
+    # als anonymous durchgelaufen wäre.
+    client = TestClient(app_with_limits)
+    resp = client.get(
+        "/api/v1/convert",
+        params={"url": "https://tidal.com/track/1"},
+        headers={"X-API-Key": "lhk_this_is_garbage_and_does_not_exist"},
+    )
+    assert resp.status_code == 401
+    assert resp.json()["error"]["code"] == "invalid_api_key"
