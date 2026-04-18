@@ -11,6 +11,7 @@ from linkhop.config import Settings
 from linkhop.db import make_engine, make_session_factory
 from linkhop.deps import build_adapter_map
 from linkhop.errors import install_error_handlers
+from linkhop.routes import convert as convert_route
 from linkhop.routes import health as health_route
 from linkhop.routes import services as services_route
 
@@ -51,6 +52,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     install_error_handlers(app)
     app.include_router(health_route.router)
     app.include_router(services_route.router)
+    app.include_router(convert_route.router)
     return app
 
 
