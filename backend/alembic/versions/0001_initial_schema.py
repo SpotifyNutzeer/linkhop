@@ -2,7 +2,7 @@
 
 Revision ID: 0001
 Revises: 
-Create Date: 2026-04-18 20:36:19.219062
+Create Date: 2026-04-18 20:41:54.704218
 
 """
 from typing import Sequence, Union
@@ -26,7 +26,7 @@ def upgrade() -> None:
     sa.Column('key_prefix', sa.String(length=12), nullable=False),
     sa.Column('key_hash', sa.Text(), nullable=False),
     sa.Column('note', sa.Text(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     sa.Column('revoked_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('rate_limit_override', sa.Integer(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
@@ -38,8 +38,8 @@ def upgrade() -> None:
     sa.Column('source_service', sa.String(length=32), nullable=False),
     sa.Column('source_type', sa.String(length=16), nullable=False),
     sa.Column('source_id', sa.String(length=128), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('access_count', sa.Integer(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+    sa.Column('access_count', sa.Integer(), server_default=sa.text('0'), nullable=False),
     sa.Column('last_access_at', sa.DateTime(timezone=True), nullable=True),
     sa.PrimaryKeyConstraint('short_id'),
     sa.UniqueConstraint('source_service', 'source_type', 'source_id', name='uq_conversion_source')

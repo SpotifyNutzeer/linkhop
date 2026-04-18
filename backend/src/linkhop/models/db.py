@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, Integer, String, Text, UniqueConstraint, func, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -21,8 +21,12 @@ class Conversion(Base):
     source_service: Mapped[str] = mapped_column(String(32), nullable=False)
     source_type: Mapped[str] = mapped_column(String(16), nullable=False)
     source_id: Mapped[str] = mapped_column(String(128), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    access_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    access_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
     last_access_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
@@ -33,6 +37,8 @@ class ApiKey(Base):
     key_prefix: Mapped[str] = mapped_column(String(12), nullable=False, unique=True)
     key_hash: Mapped[str] = mapped_column(Text, nullable=False)
     note: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     rate_limit_override: Mapped[int | None] = mapped_column(Integer)

@@ -12,12 +12,14 @@ from linkhop.models.db import ApiKey, Base, Conversion
 @pytest.fixture
 async def session():
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    session_local = async_sessionmaker(engine, expire_on_commit=False)
-    async with session_local() as s:
-        yield s
-    await engine.dispose()
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        session_local = async_sessionmaker(engine, expire_on_commit=False)
+        async with session_local() as s:
+            yield s
+    finally:
+        await engine.dispose()
 
 
 async def test_conversion_insert_and_fetch(session: AsyncSession):

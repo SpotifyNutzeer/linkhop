@@ -151,6 +151,7 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+extend-exclude = ["alembic/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "N", "SIM", "RUF"]
@@ -761,7 +762,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Integer, String, Text, DateTime, UniqueConstraint
+from sqlalchemy import DateTime, Integer, String, Text, UniqueConstraint, func, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -780,8 +781,12 @@ class Conversion(Base):
     source_service: Mapped[str] = mapped_column(String(32), nullable=False)
     source_type: Mapped[str] = mapped_column(String(16), nullable=False)
     source_id: Mapped[str] = mapped_column(String(128), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    access_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    access_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
     last_access_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
@@ -792,7 +797,9 @@ class ApiKey(Base):
     key_prefix: Mapped[str] = mapped_column(String(12), nullable=False, unique=True)
     key_hash: Mapped[str] = mapped_column(Text, nullable=False)
     note: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     rate_limit_override: Mapped[int | None] = mapped_column(Integer)
 ```
@@ -803,21 +810,30 @@ class ApiKey(Base):
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from linkhop.config import Settings
 
 
-def make_engine(settings: Settings):
+def make_engine(settings: Settings) -> AsyncEngine:
     return create_async_engine(settings.database_url, pool_pre_ping=True, future=True)
 
 
-def make_session_factory(engine) -> async_sessionmaker[AsyncSession]:
+def make_session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
     return async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
 
-async def session_scope(factory: async_sessionmaker[AsyncSession]) -> AsyncIterator[AsyncSession]:
+@asynccontextmanager
+async def session_scope(
+    factory: async_sessionmaker[AsyncSession],
+) -> AsyncIterator[AsyncSession]:
     async with factory() as session:
         yield session
 ```
@@ -899,11 +915,14 @@ else:
 
 - [ ] **Step 5.6: Initial-Migration generieren**
 
+Autogenerate braucht eine laufende Datenbank, um den aktuellen Stand abzuleiten. Da lokal keine Postgres läuft, gegen SQLite-in-memory generieren — das Ergebnis ist portabel, weil SQLAlchemy die Spaltentypen dialect-neutral rendert:
+
 ```bash
-cd backend && .venv/bin/alembic revision --autogenerate -m "initial schema" -r 0001
+cd backend && LINKHOP_DATABASE_URL="sqlite+aiosqlite:///:memory:" \
+    .venv/bin/alembic revision --autogenerate -m "initial schema" --rev-id 0001
 ```
 
-Überprüfe `alembic/versions/0001_*.py` — sollte `conversions` und `api_keys` Tables enthalten.
+Überprüfe `alembic/versions/0001_*.py` — sollte `conversions` und `api_keys` Tables enthalten. Autogenerate rendert `func.now()` als `CURRENT_TIMESTAMP` (SQLite). Ersetze manuell durch `sa.func.now()` für saubere Portabilität zu Postgres.
 
 - [ ] **Step 5.7: Test für DB-Modelle — `tests/test_db.py`**
 
@@ -919,12 +938,14 @@ from datetime import datetime, timezone
 @pytest.fixture
 async def session():
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
-    async with SessionLocal() as s:
-        yield s
-    await engine.dispose()
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        session_local = async_sessionmaker(engine, expire_on_commit=False)
+        async with session_local() as s:
+            yield s
+    finally:
+        await engine.dispose()
 
 
 async def test_conversion_insert_and_fetch(session: AsyncSession):
@@ -2319,12 +2340,14 @@ from linkhop.short_id import ShortIdService, generate_short_id
 @pytest.fixture
 async def session():
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
-    async with SessionLocal() as s:
-        yield s
-    await engine.dispose()
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        session_local = async_sessionmaker(engine, expire_on_commit=False)
+        async with session_local() as s:
+            yield s
+    finally:
+        await engine.dispose()
 
 
 def test_generate_short_id_format():
@@ -2493,12 +2516,14 @@ from linkhop.models.db import Base
 @pytest.fixture
 async def session():
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
-    async with SessionLocal() as s:
-        yield s
-    await engine.dispose()
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        session_local = async_sessionmaker(engine, expire_on_commit=False)
+        async with session_local() as s:
+            yield s
+    finally:
+        await engine.dispose()
 
 
 async def test_create_returns_key_with_prefix(session: AsyncSession):
