@@ -28,11 +28,14 @@ async def convert(
 
     adapters = request.app.state.adapters
 
-    if cached:
+    if cached is not None:
         source_dict = cached["source"]
         targets_dict = {k: TargetResult(**v) for k, v in cached["targets"].items()}
         source_model = SourceContent(**source_dict)
-        cache_info = CacheInfo(hit=True, ttl_seconds=await cache.ttl(cache_key))
+        # Redis TTL returns -2 when the key just expired between get and ttl
+        # (and -1 when no TTL is set). Neither is a meaningful number to leak
+        # to API clients, so clamp to 0.
+        cache_info = CacheInfo(hit=True, ttl_seconds=max(0, await cache.ttl(cache_key)))
     else:
         pipeline = Pipeline(adapters)
         outcome = await pipeline.convert(parsed)
