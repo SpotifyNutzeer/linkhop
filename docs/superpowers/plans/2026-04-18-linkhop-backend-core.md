@@ -3566,14 +3566,16 @@ Running Tally: **79 findings / 37 rejected über 15 Tasks**.
 **Files:**
 - Create: `backend/src/linkhop/errors.py`
 - Create: `backend/tests/test_errors.py`
+- Modify: `backend/src/linkhop/pipeline.py` (replace `LookupError` with `SourceNotFoundError`)
+- Modify: `backend/tests/test_pipeline.py` (replace `LookupError` in `pytest.raises`)
 
-- [ ] **Step 16.1: Test — `tests/test_errors.py`**
+- [x] **Step 16.1: Test — `tests/test_errors.py`**
 
 ```python
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from linkhop.errors import AppError, install_error_handlers
+from linkhop.errors import AppError, SourceNotFoundError, install_error_handlers
 from linkhop.url_parser import UnsupportedUrlError
 
 
@@ -3589,6 +3591,16 @@ def make_app() -> FastAPI:
     def _raise_unsupported():
         raise UnsupportedUrlError("bad url")
 
+    @app.get("/raise-not-found")
+    def _raise_not_found():
+        raise SourceNotFoundError("spotify/track/xyz")
+
+    @app.get("/raise-keyerror")
+    def _raise_keyerror():
+        # KeyError is a LookupError subclass. The handler must NOT map it to 404,
+        # otherwise every dict-miss in route logic masquerades as "source_unavailable".
+        raise KeyError("some_internal_key")
+
     return app
 
 
@@ -3599,6 +3611,14 @@ def test_app_error_mapped_to_response():
     assert resp.json() == {"error": {"code": "test_error", "message": "I am a teapot"}}
 
 
+def test_app_error_str_is_message():
+    # Guards against the dataclass-Exception pitfall: without __post_init__ calling
+    # super().__init__(message), str(exc) == "" and exc.args == () — kills logs.
+    exc = AppError(code="c", status=500, message="boom")
+    assert str(exc) == "boom"
+    assert exc.args == ("boom",)
+
+
 def test_unsupported_url_mapped_to_400():
     client = TestClient(make_app())
     resp = client.get("/raise-unsupported")
@@ -3606,15 +3626,32 @@ def test_unsupported_url_mapped_to_400():
     body = resp.json()
     assert body["error"]["code"] == "unsupported_service"
     assert "bad url" in body["error"]["message"]
+
+
+def test_source_not_found_mapped_to_404():
+    client = TestClient(make_app())
+    resp = client.get("/raise-not-found")
+    assert resp.status_code == 404
+    body = resp.json()
+    assert body["error"]["code"] == "source_unavailable"
+    assert "spotify/track/xyz" in body["error"]["message"]
+
+
+def test_keyerror_is_not_caught_as_source_not_found():
+    # Regression guard: we deliberately do NOT use LookupError as the handler target
+    # because KeyError/IndexError are LookupError subclasses.
+    client = TestClient(make_app(), raise_server_exceptions=False)
+    resp = client.get("/raise-keyerror")
+    assert resp.status_code == 500  # FastAPI default for unhandled
 ```
 
-- [ ] **Step 16.2: Test laufen — FAIL**
+- [x] **Step 16.2: Test laufen — FAIL**
 
 ```bash
 cd backend && pytest tests/test_errors.py -v
 ```
 
-- [ ] **Step 16.3: `src/linkhop/errors.py` schreiben**
+- [x] **Step 16.3: `src/linkhop/errors.py` schreiben**
 
 ```python
 from __future__ import annotations
@@ -3633,6 +3670,19 @@ class AppError(Exception):
     status: int
     message: str
 
+    def __post_init__(self) -> None:
+        # dataclass-generated __init__ skips Exception.__init__, so str(exc) and
+        # exc.args end up empty — breaks logging. Wire the message through.
+        super().__init__(self.message)
+
+
+class SourceNotFoundError(Exception):
+    """Raised by the pipeline when a parsed source URL cannot be resolved.
+
+    Using a dedicated type instead of LookupError prevents KeyError/IndexError
+    (both LookupError subclasses) from being maskedly mapped to 404.
+    """
+
 
 def _body(code: str, message: str) -> dict:
     return {"error": {"code": code, "message": message}}
@@ -3647,25 +3697,76 @@ def install_error_handlers(app: FastAPI) -> None:
     async def _unsupported(_: Request, exc: UnsupportedUrlError):
         return JSONResponse(status_code=400, content=_body("unsupported_service", str(exc)))
 
-    @app.exception_handler(LookupError)
-    async def _lookup(_: Request, exc: LookupError):
+    @app.exception_handler(SourceNotFoundError)
+    async def _source_not_found(_: Request, exc: SourceNotFoundError):
         return JSONResponse(status_code=404, content=_body("source_unavailable", str(exc)))
 ```
 
-- [ ] **Step 16.4: Tests ausführen**
+- [x] **Step 16.4: `pipeline.py` + `test_pipeline.py` migrieren**
+
+`backend/src/linkhop/pipeline.py`: beide `raise LookupError(...)` auf
+`raise SourceNotFoundError(...)` umstellen (Import: `from linkhop.errors import
+SourceNotFoundError`).
+
+`backend/tests/test_pipeline.py`: beide `pytest.raises(LookupError)` auf
+`pytest.raises(SourceNotFoundError)` umstellen (Import entsprechend).
+
+- [x] **Step 16.5: Tests ausführen**
 
 ```bash
-cd backend && pytest tests/test_errors.py -v
+cd backend && pytest tests/test_errors.py tests/test_pipeline.py -v
 ```
 
-Expected: `2 passed`.
+Expected: 5 errors-tests pass, 10 pipeline-tests pass (unchanged count).
 
-- [ ] **Step 16.5: Commit**
+- [x] **Step 16.6: Full-Suite**
+
+```bash
+cd backend && pytest -q
+```
+
+Expected: `134 passed` (129 baseline + 5 new errors-tests; pipeline count unchanged).
+
+- [x] **Step 16.7: Commit**
 
 ```bash
 git add backend/
 git commit -m "feat(backend): error types and FastAPI handlers"
 ```
+
+**Post-Implementation-Bilanz (Task 16):**
+
+Pre-Dispatch-Plan-Patches (2):
+- **Patch A:** `@dataclass` auf `Exception` lässt `Exception.__init__` unbeachtet.
+  Empirisch verifiziert: `str(e) == ''`, `e.args == ()` — zerschießt Production-Logs.
+  Fix per `__post_init__(self): super().__init__(self.message)`.
+- **Patch B:** `LookupError`-Handler maskiert `KeyError`/`IndexError` (beides
+  Subklassen) als irreführende `404 source_unavailable`. Fix durch eigene
+  Domain-Exception `SourceNotFoundError`; `pipeline.py` (2 Raise-Sites) und
+  `test_pipeline.py` (2 `pytest.raises`) migriert.
+
+Feat-Commit (`bbfd70b`): 5 neue errors-Tests, 134 passed.
+
+Quality-Review: **10 findings, 0 akzeptiert, 10 rejected**.
+- M1 (Stack-trace leak) → REJECT: Empirisch widerlegt — FastAPI `debug=False`
+  (Production-Default) gibt `text/plain "Internal Server Error"` ohne Traceback.
+  Reviewer hat `debug=True` Verhalten angenommen.
+- M2 (`RequestValidationError` escapes envelope) → REJECT: Out of scope für
+  Task 16; Pydantics `detail`-Struktur liefert Field-Details, die generisches
+  `{"error":{message}}` verschluckt. Konsistenz-Thema für Task 20/24.
+- M3 (Message verbatim reflected) → REJECT: Aktuell nur User-kontrollierte
+  URL-Segmente. Future-Proofing ohne Angriffsvektor.
+- m4 (Pickling) → REJECT: Celery/multiprocessing nicht im Projekt.
+- m5 (Default `status=500`) → REJECT: YAGNI ohne belegbares Muster.
+- m6 (Handler-Ordering bei Subclassing) → REJECT: Hypothetisch.
+- m7 (Content-Type-Assertion) → REJECT: `resp.json()` fängt Non-JSON-Regression.
+- m8 (Exception-Chaining-Test) → REJECT: Standard-Python, kein eigener Pfad.
+- m9 (Built-in LookupErrors aus `self._adapters[...]`) → REJECT: `_adapters`
+  in `__init__` fixiert; KeyError wäre echter Bug → 500 korrekt, nicht 404.
+- m10 (Unprintable message via `str()`-Cast) → REJECT: Type-Contract soll
+  laut brechen, nicht still maskiert werden.
+
+Running Tally: **89 findings / 47 rejected über 16 Tasks**.
 
 ---
 
