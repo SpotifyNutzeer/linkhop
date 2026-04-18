@@ -4677,10 +4677,13 @@ def app_with_limits():
 
 
 def test_anonymous_rate_limited(app_with_limits):
-    with TestClient(app_with_limits) as client:
-        for _ in range(2):
-            assert client.get("/api/v1/convert", params={"url": "https://tidal.com/track/1"}).status_code == 200
-        resp = client.get("/api/v1/convert", params={"url": "https://tidal.com/track/1"})
+    # Wie in Task 20/21: KEIN `with`-Block, sonst triggert FastAPI den echten
+    # Lifespan, der app.state.ratelimiter/cache/session_factory/adapters
+    # überschreibt und die Fixture-Stubs wegwirft.
+    client = TestClient(app_with_limits)
+    for _ in range(2):
+        assert client.get("/api/v1/convert", params={"url": "https://tidal.com/track/1"}).status_code == 200
+    resp = client.get("/api/v1/convert", params={"url": "https://tidal.com/track/1"})
     assert resp.status_code == 429
     assert resp.json()["error"]["code"] == "rate_limited"
 
@@ -4692,14 +4695,17 @@ def test_valid_key_uses_higher_limit(app_with_limits):
             return plain
     plain = asyncio.run(_create_key())
 
-    with TestClient(app_with_limits) as client:
-        for _ in range(5):
-            r = client.get(
-                "/api/v1/convert",
-                params={"url": "https://tidal.com/track/1"},
-                headers={"X-API-Key": plain},
-            )
-            assert r.status_code == 200
+    # Auch hier: KEIN `with`-Block — sonst überschreibt der reale Lifespan
+    # die in _startup() gebaute Engine, und der eben erzeugte API-Key wäre
+    # aus Sicht des HTTP-Requests nicht mehr in der DB.
+    client = TestClient(app_with_limits)
+    for _ in range(5):
+        r = client.get(
+            "/api/v1/convert",
+            params={"url": "https://tidal.com/track/1"},
+            headers={"X-API-Key": plain},
+        )
+        assert r.status_code == 200
 ```
 
 - [ ] **Step 22.2: `src/linkhop/middleware.py` schreiben**
