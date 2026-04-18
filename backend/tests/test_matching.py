@@ -89,3 +89,47 @@ def test_threshold_status_boundaries():
     assert threshold_status(0.4) == "ok_low"
     assert threshold_status(0.69999) == "ok_low"
     assert threshold_status(0.39999) == "not_found"
+
+
+def test_artist_overlap_handles_feat_notation():
+    # Deezer often returns a single "A feat. B" name where Spotify returns ("A", "B").
+    # Tokenised overlap must cross that representational gap.
+    assert artist_overlap(("Kavinsky feat. Daft Punk",), ("Kavinsky", "Daft Punk")) == 1.0
+    assert artist_overlap(("Kavinsky ft Daft Punk",), ("Kavinsky",)) > 0.3
+
+
+def test_title_similarity_returns_zero_when_either_side_normalises_to_empty():
+    # Pure-symbol or pure-combining-mark titles normalise to "" and would otherwise
+    # compare equal to another empty-normalising title via SequenceMatcher("", "")==1.0.
+    assert title_similarity("🎵🎶", "Nightcall") == 0.0
+    assert title_similarity("🎵🎶", "🎵🎶") == 0.0
+
+
+def make_album(title, artists, duration_ms=None):
+    return ResolvedContent(
+        service="spotify", type=ContentType.ALBUM, id="x", url="",
+        title=title, artists=artists, album=None,
+        duration_ms=duration_ms, isrc=None, upc=None, artwork="",
+    )
+
+
+def make_artist(name):
+    return ResolvedContent(
+        service="spotify", type=ContentType.ARTIST, id="x", url="",
+        title=name, artists=(name,), album=None,
+        duration_ms=None, isrc=None, upc=None, artwork="",
+    )
+
+
+def test_score_candidate_album_perfect_match_reaches_one():
+    # Albums carry no duration on either side; weights must re-distribute so
+    # a perfect match scores 1.0 rather than the 0.9 cap of the track formula.
+    src = make_album("OutRun", ("Kavinsky",))
+    cand = make_album("OutRun", ("Kavinsky",))
+    assert score_candidate(src, cand, match="metadata") == 1.0
+
+
+def test_score_candidate_artist_perfect_match_reaches_one():
+    src = make_artist("Kavinsky")
+    cand = make_artist("Kavinsky")
+    assert score_candidate(src, cand, match="metadata") == 1.0

@@ -12,6 +12,11 @@ ThresholdStatus = Literal["ok", "ok_low", "not_found"]
 _PUNCT_RE = re.compile(r"[^\w\s]", flags=re.UNICODE)
 _WS_RE = re.compile(r"\s+")
 
+# Connector tokens that join collaborating artists into one string on some services
+# (Deezer tends to return "A feat. B" as a single artist name, Spotify splits them).
+# Stripping these makes the two shapes comparable.
+_ARTIST_STOPWORDS = frozenset({"feat", "ft", "featuring", "with", "and"})
+
 
 def _normalize(s: str) -> str:
     s = unicodedata.normalize("NFKD", s)
@@ -21,17 +26,30 @@ def _normalize(s: str) -> str:
     return s
 
 
+def _artist_tokens(names: tuple[str, ...]) -> set[str]:
+    out: set[str] = set()
+    for name in names:
+        for tok in _normalize(name).split():
+            if tok and tok not in _ARTIST_STOPWORDS:
+                out.add(tok)
+    return out
+
+
 def title_similarity(a: str, b: str) -> float:
-    return SequenceMatcher(None, _normalize(a), _normalize(b)).ratio()
+    na = _normalize(a)
+    nb = _normalize(b)
+    if not na or not nb:
+        return 0.0
+    return SequenceMatcher(None, na, nb).ratio()
 
 
 def artist_overlap(a: tuple[str, ...], b: tuple[str, ...]) -> float:
-    sa = {_normalize(x) for x in a}
-    sb = {_normalize(x) for x in b}
-    if not sa or not sb:
+    ta = _artist_tokens(a)
+    tb = _artist_tokens(b)
+    if not ta or not tb:
         return 0.0
-    inter = sa & sb
-    union = sa | sb
+    inter = ta & tb
+    union = ta | tb
     return len(inter) / len(union)
 
 
@@ -49,6 +67,11 @@ def score_candidate(
         return 1.0
     title = title_similarity(source.title, candidate.title)
     artists = artist_overlap(source.artists, candidate.artists)
+    # Album and artist content have no duration on either side; duration_score would
+    # contribute a constant 0.5, capping a perfect match at 0.9. Re-distribute its
+    # weight across title and artists when duration is unavailable on either side.
+    if source.duration_ms is None or candidate.duration_ms is None:
+        return round(title * 0.5 + artists * 0.5, 3)
     dur = duration_score(source.duration_ms, candidate.duration_ms)
     return round(title * 0.4 + artists * 0.4 + dur * 0.2, 3)
 
