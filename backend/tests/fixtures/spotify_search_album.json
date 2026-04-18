@@ -1,0 +1,12 @@
+{
+  "albums": {
+    "items": [
+      {
+        "id": "2dIGnmEIy1WZIcZCFSj6i8",
+        "name": "OutRun",
+        "external_urls": { "spotify": "https://open.spotify.com/album/2dIGnmEIy1WZIcZCFSj6i8" },
+        "artists": [ { "name": "Kavinsky" } ]
+      }
+    ]
+  }
+}

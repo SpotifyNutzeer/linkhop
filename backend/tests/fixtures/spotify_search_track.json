@@ -1,0 +1,14 @@
+{
+  "tracks": {
+    "items": [
+      {
+        "id": "6habFhsOp2NvshLv26DqMb",
+        "name": "Nightcall",
+        "duration_ms": 257000,
+        "external_ids": { "isrc": "FR6V81200001" },
+        "external_urls": { "spotify": "https://open.spotify.com/track/6habFhsOp2NvshLv26DqMb" },
+        "artists": [ { "name": "Kavinsky" } ]
+      }
+    ]
+  }
+}

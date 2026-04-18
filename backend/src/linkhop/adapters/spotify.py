@@ -7,7 +7,7 @@ from typing import Any
 import httpx
 
 from linkhop.adapters.base import AdapterCapabilities, AdapterError
-from linkhop.models.domain import ContentType, ResolvedContent, SearchHit
+from linkhop.models.domain import ContentType, MatchType, ResolvedContent, SearchHit
 from linkhop.url_parser import ParsedUrl
 
 
@@ -111,4 +111,78 @@ class SpotifyAdapter:
         return None
 
     async def search(self, meta: ResolvedContent, target_type: ContentType) -> list[SearchHit]:
-        raise NotImplementedError  # in Task 9
+        if target_type == ContentType.TRACK and meta.isrc:
+            return await self._search_tracks(f"isrc:{meta.isrc}", match="isrc")
+        if target_type == ContentType.ALBUM and meta.upc:
+            return await self._search_albums(f"upc:{meta.upc}", match="upc")
+        if target_type == ContentType.TRACK:
+            q = f'track:"{meta.title}" artist:"{meta.artists[0] if meta.artists else ""}"'
+            return await self._search_tracks(q, match="metadata")
+        if target_type == ContentType.ALBUM:
+            q = f'album:"{meta.title}" artist:"{meta.artists[0] if meta.artists else ""}"'
+            return await self._search_albums(q, match="metadata")
+        if target_type == ContentType.ARTIST:
+            q = f'artist:"{meta.title}"'
+            return await self._search_artists(q)
+        return []
+
+    async def _search_tracks(self, q: str, match: MatchType) -> list[SearchHit]:
+        token = await self._ensure_token()
+        resp = await self._http.get(
+            f"{self._API}/search",
+            headers={"Authorization": f"Bearer {token}"},
+            params={"q": q, "type": "track", "limit": 3},
+        )
+        if resp.status_code >= 400:
+            raise AdapterError("spotify", f"search tracks: {resp.status_code}")
+        items = resp.json().get("tracks", {}).get("items", [])
+        return [
+            SearchHit(
+                service=self.service_id,
+                id=it["id"],
+                url=it["external_urls"]["spotify"],
+                confidence=1.0 if match == "isrc" else 0.0,  # Scoring erfolgt im Matcher
+                match=match,
+            )
+            for it in items
+        ]
+
+    async def _search_albums(self, q: str, match: MatchType) -> list[SearchHit]:
+        token = await self._ensure_token()
+        resp = await self._http.get(
+            f"{self._API}/search",
+            headers={"Authorization": f"Bearer {token}"},
+            params={"q": q, "type": "album", "limit": 3},
+        )
+        if resp.status_code >= 400:
+            raise AdapterError("spotify", f"search albums: {resp.status_code}")
+        items = resp.json().get("albums", {}).get("items", [])
+        return [
+            SearchHit(
+                service=self.service_id, id=it["id"],
+                url=it["external_urls"]["spotify"],
+                confidence=1.0 if match == "upc" else 0.0,
+                match=match,
+            )
+            for it in items
+        ]
+
+    async def _search_artists(self, q: str) -> list[SearchHit]:
+        token = await self._ensure_token()
+        resp = await self._http.get(
+            f"{self._API}/search",
+            headers={"Authorization": f"Bearer {token}"},
+            params={"q": q, "type": "artist", "limit": 3},
+        )
+        if resp.status_code >= 400:
+            raise AdapterError("spotify", f"search artists: {resp.status_code}")
+        items = resp.json().get("artists", {}).get("items", [])
+        return [
+            SearchHit(
+                service=self.service_id, id=it["id"],
+                url=it["external_urls"]["spotify"],
+                confidence=0.0,
+                match="metadata",
+            )
+            for it in items
+        ]
