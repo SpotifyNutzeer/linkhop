@@ -203,8 +203,8 @@ Fehler-Codes: `unsupported_service`, `invalid_url`, `rate_limited`, `source_unav
 
 ### Auth & Rate-Limit
 
-- Anonym: 20 req/min pro IP (Default, per Helm-Values änderbar)
-- Mit `X-API-Key`-Header: 300 req/min (Default, per Helm-Values änderbar)
+- Anonym: 20 Requests pro Minute pro IP (Default, per Helm-Values änderbar)
+- Mit `X-API-Key`-Header: 300 Requests pro Minute (Default, per Helm-Values änderbar)
 - Keys werden per CLI auf dem Backend-Pod erstellt:
   - `linkhop-admin key create --note "<freitext>"` → gibt Klartext-Key einmal aus
   - `linkhop-admin key list`
@@ -335,8 +335,8 @@ backend:
     requests: { cpu: 50m,  memory: 128Mi }
     limits:   { cpu: 500m, memory: 512Mi }
   rateLimit:
-    anonymous: 20
-    withKey: 300
+    anonymousPerMinute: 20
+    withKeyPerMinute: 300
   cacheTtlSeconds: 604800
   adapters:
     spotify:      { enabled: true, existingSecret: "" }
@@ -432,8 +432,8 @@ Explizit **nicht** Teil von V1. Wird in eigener Spec-Runde durchgeplant, wenn V1
 - **Apple Music**-Adapter (Developer-Account-Voraussetzung)
 - **Playlists**-Support (Track-für-Track-Auflösung)
 - **Stats-Endpoint** (populäre Konvertierungen, Top-Tracks etc.)
-- **Evtl. Apple Music, evtl. YouTube (nicht nur YT Music), evtl. Amazon Music** sofern APIs zugänglich werden
-- **Postgres als Haupt-DB**: Schema ist bereits für `user_id`-Spalte in `conversions`/`api_keys` vorbereitet
+- **Zusätzliche Dienste**: YouTube (nicht nur YT Music), Amazon Music — sofern APIs zugänglich werden
+- **User-Spalte** (`user_id`) in `conversions`/`api_keys`-Tabellen — wird beim V1-Schema bereits mitgedacht, aber erst mit V2 aktiv genutzt
 
 ## Offene Punkte (vor Implementierung zu klären)
 
