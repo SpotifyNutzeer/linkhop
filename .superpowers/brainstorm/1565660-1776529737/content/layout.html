@@ -1,0 +1,175 @@
+<h2>Welches Layout für die Konvertierungs-Seite?</h2>
+<p class="subtitle">Alle drei im Catppuccin Mocha Lavender Stil. Gezeigt wird der Zustand <em>mit Ergebnis</em>.</p>
+
+<style>
+  .mocha-preview {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    border-radius: 12px;
+    padding: 20px;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    min-height: 360px;
+  }
+  .mocha-preview .top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+  .mocha-preview .brand {
+    color: #b4befe;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: .02em;
+  }
+  .mocha-preview .theme-btn {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: #313244;
+    border: 1px solid #45475a;
+  }
+  .mocha-preview .input-bar {
+    background: #313244;
+    border: 1px solid #45475a;
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: #a6adc8;
+    font-size: 12px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .mocha-preview .input-bar .btn {
+    background: #b4befe;
+    color: #1e1e2e;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 11px;
+  }
+  .mocha-preview .cover {
+    background: linear-gradient(135deg, #b4befe 0%, #f5c2e7 100%);
+    border-radius: 8px;
+  }
+  .mocha-preview .title { color: #cdd6f4; font-weight: 700; font-size: 14px; }
+  .mocha-preview .artist { color: #a6adc8; font-size: 12px; margin-top: 2px; }
+  .mocha-preview .svc {
+    background: #313244;
+    border: 1px solid #45475a;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 11px;
+    color: #cdd6f4;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .mocha-preview .svc .dot {
+    width: 10px; height: 10px; border-radius: 3px;
+  }
+  .dot-sp { background: #a6e3a1; }
+  .dot-dz { background: #89b4fa; }
+  .dot-td { background: #f5c2e7; }
+  .dot-yt { background: #f38ba8; }
+</style>
+
+<div class="cards">
+
+  <div class="card" data-choice="hero" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:0;overflow:hidden;border-radius:12px 12px 0 0">
+      <div class="mocha-preview">
+        <div class="top">
+          <div class="brand">linkhop.</div>
+          <div class="theme-btn"></div>
+        </div>
+        <div class="input-bar" style="margin-bottom:22px">
+          <span>tidal.com/track/123456789</span>
+          <span class="btn">Convert</span>
+        </div>
+        <div style="text-align:center">
+          <div class="cover" style="width:80px;height:80px;margin:0 auto 10px"></div>
+          <div class="title">Nightcall</div>
+          <div class="artist">Kavinsky · Outrun</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:14px">
+          <div class="svc"><span class="dot dot-sp"></span>Spotify</div>
+          <div class="svc"><span class="dot dot-dz"></span>Deezer</div>
+          <div class="svc"><span class="dot dot-td"></span>Tidal</div>
+          <div class="svc"><span class="dot dot-yt"></span>YT Music</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Hero-zentriert</h3>
+      <p>Großes Input-Feld mittig, Cover darunter, Dienste als Grid. Klassisch à la Odesli. "Wow-Effekt", viel vertikaler Raum.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="split" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:0;overflow:hidden;border-radius:12px 12px 0 0">
+      <div class="mocha-preview">
+        <div class="top">
+          <div class="brand">linkhop.</div>
+          <div class="theme-btn"></div>
+        </div>
+        <div class="input-bar" style="margin-bottom:18px">
+          <span>tidal.com/track/123456789</span>
+          <span class="btn">Convert</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:stretch">
+          <div style="flex:1;display:flex;gap:10px;align-items:center">
+            <div class="cover" style="width:64px;height:64px;flex-shrink:0"></div>
+            <div>
+              <div class="title">Nightcall</div>
+              <div class="artist">Kavinsky · Outrun</div>
+              <div style="font-size:10px;color:#6c7086;margin-top:4px">TRACK · 3:45</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:14px">
+          <div class="svc"><span class="dot dot-sp"></span>Spotify <span style="margin-left:auto;color:#6c7086">→</span></div>
+          <div class="svc"><span class="dot dot-dz"></span>Deezer <span style="margin-left:auto;color:#6c7086">→</span></div>
+          <div class="svc"><span class="dot dot-td"></span>Tidal <span style="margin-left:auto;color:#6c7086">→</span></div>
+          <div class="svc"><span class="dot dot-yt"></span>YT Music <span style="margin-left:auto;color:#6c7086">→</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Kompakte Karte</h3>
+      <p>Input oben, darunter eine zentrale Track-Karte mit Cover + Meta, darunter Dienste als vertikale Liste. Informationsdichte hoch, wenig Scrollen.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="side" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:0;overflow:hidden;border-radius:12px 12px 0 0">
+      <div class="mocha-preview">
+        <div class="top">
+          <div class="brand">linkhop.</div>
+          <div class="theme-btn"></div>
+        </div>
+        <div class="input-bar" style="margin-bottom:18px">
+          <span>tidal.com/track/123456789</span>
+          <span class="btn">Convert</span>
+        </div>
+        <div style="display:grid;grid-template-columns:130px 1fr;gap:14px">
+          <div>
+            <div class="cover" style="width:100%;aspect-ratio:1"></div>
+            <div class="title" style="margin-top:8px;font-size:13px">Nightcall</div>
+            <div class="artist" style="font-size:11px">Kavinsky</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div class="svc"><span class="dot dot-sp"></span>Spotify <span style="margin-left:auto;color:#6c7086">→</span></div>
+            <div class="svc"><span class="dot dot-dz"></span>Deezer <span style="margin-left:auto;color:#6c7086">→</span></div>
+            <div class="svc"><span class="dot dot-td"></span>Tidal <span style="margin-left:auto;color:#6c7086">→</span></div>
+            <div class="svc"><span class="dot dot-yt"></span>YT Music <span style="margin-left:auto;color:#6c7086">→</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Side-by-side</h3>
+      <p>Input oben, darunter Cover links + Dienst-Liste rechts nebeneinander. Weniger vertikal als B, mobil würde das auf B kollabieren.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:24px">Klick die Karte, die am besten passt — oder sag mir im Terminal, wenn du eine Mischform willst.</p>

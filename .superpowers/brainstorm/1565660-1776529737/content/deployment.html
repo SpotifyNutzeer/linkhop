@@ -1,0 +1,113 @@
+<h2>linkhop — Deployment & Helm-Chart (Abschnitt 5/5)</h2>
+<p class="subtitle">Generisches Chart, getestet gegen RKE2 + Traefik + cert-manager + external-dns</p>
+
+<style>
+  .d {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    border-radius: 12px;
+    padding: 24px;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .d h3 { color: #b4befe; margin: 0 0 10px; font-size: 13px; letter-spacing: .03em; text-transform: uppercase; }
+  .d h4 { color: #cdd6f4; margin: 0 0 6px; font-size: 13px; }
+  .d .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+  .d .box {
+    background: #313244; border: 1px solid #45475a;
+    border-left: 3px solid #b4befe;
+    border-radius: 8px; padding: 12px 14px;
+  }
+  .d p { color: #a6adc8; font-size: 12px; margin: 2px 0; line-height: 1.55; }
+  .d code { background: #11111b; color: #f9e2af; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-family: ui-monospace, monospace; }
+  .d pre { background: #11111b; color: #cdd6f4; padding: 12px 14px; border-radius: 6px; font-size: 11px; overflow-x:auto; line-height: 1.5; margin: 8px 0; }
+  .d .pill { display:inline-block; background:#45475a; color:#cdd6f4; font-size:10px; padding:2px 7px; border-radius:4px; margin-right:4px; margin-top:4px; }
+  .d .yaml-k { color: #b4befe; }
+  .d .yaml-v { color: #f9e2af; }
+  .d .yaml-c { color: #6c7086; font-style: italic; }
+</style>
+
+<div class="d">
+
+  <h3>Chart-Struktur</h3>
+  <pre>deploy/helm/linkhop/
+├── Chart.yaml
+├── values.yaml           <span class="yaml-c"># Defaults + kommentiert</span>
+├── values.schema.json    <span class="yaml-c"># Validierung</span>
+└── templates/
+    ├── _helpers.tpl
+    ├── backend-deployment.yaml
+    ├── backend-service.yaml
+    ├── frontend-deployment.yaml
+    ├── frontend-service.yaml
+    ├── ingress.yaml              <span class="yaml-c"># traefik/nginx, pathType: Prefix</span>
+    ├── redis-*.yaml              <span class="yaml-c"># Bitnami-Subchart ODER external</span>
+    ├── postgres-connection.yaml  <span class="yaml-c"># nur Secret-Ref; DB wird extern erwartet</span>
+    ├── configmap.yaml
+    ├── secret-refs.yaml          <span class="yaml-c"># nur Referenzen, erzeugt keine Creds</span>
+    ├── serviceaccount.yaml
+    ├── networkpolicy.yaml
+    └── poddisruptionbudget.yaml</pre>
+
+  <h3>Values-Highlights</h3>
+  <pre><span class="yaml-k">global:</span>
+  <span class="yaml-k">domain:</span> <span class="yaml-v">linkhop.paul.wtf</span>
+
+<span class="yaml-k">backend:</span>
+  <span class="yaml-k">replicas:</span> <span class="yaml-v">2</span>
+  <span class="yaml-k">image:</span> { <span class="yaml-k">repository:</span> <span class="yaml-v">ghcr.io/&lt;user&gt;/linkhop-backend</span>, <span class="yaml-k">tag:</span> <span class="yaml-v">""</span> }
+  <span class="yaml-k">resources:</span> { <span class="yaml-k">requests:</span> { <span class="yaml-k">cpu:</span> <span class="yaml-v">50m</span>, <span class="yaml-k">memory:</span> <span class="yaml-v">128Mi</span> }, <span class="yaml-k">limits:</span> { <span class="yaml-k">cpu:</span> <span class="yaml-v">500m</span>, <span class="yaml-k">memory:</span> <span class="yaml-v">512Mi</span> } }
+  <span class="yaml-k">rateLimit:</span> { <span class="yaml-k">anonymous:</span> <span class="yaml-v">20</span>, <span class="yaml-k">withKey:</span> <span class="yaml-v">300</span> }
+  <span class="yaml-k">cacheTtlSeconds:</span> <span class="yaml-v">604800</span>
+  <span class="yaml-k">adapters:</span>
+    <span class="yaml-k">spotify:</span>  { <span class="yaml-k">enabled:</span> <span class="yaml-v">true</span>, <span class="yaml-k">existingSecret:</span> <span class="yaml-v">linkhop-spotify</span> }
+    <span class="yaml-k">deezer:</span>   { <span class="yaml-k">enabled:</span> <span class="yaml-v">true</span> }  <span class="yaml-c"># keine Creds nötig</span>
+    <span class="yaml-k">tidal:</span>    { <span class="yaml-k">enabled:</span> <span class="yaml-v">true</span>, <span class="yaml-k">existingSecret:</span> <span class="yaml-v">linkhop-tidal</span> }
+    <span class="yaml-k">youtubeMusic:</span> { <span class="yaml-k">enabled:</span> <span class="yaml-v">true</span>, <span class="yaml-k">existingSecret:</span> <span class="yaml-v">linkhop-ytm</span> }
+
+<span class="yaml-k">frontend:</span>
+  <span class="yaml-k">replicas:</span> <span class="yaml-v">2</span>
+  <span class="yaml-k">image:</span> { <span class="yaml-k">repository:</span> <span class="yaml-v">ghcr.io/&lt;user&gt;/linkhop-frontend</span>, <span class="yaml-k">tag:</span> <span class="yaml-v">""</span> }
+
+<span class="yaml-k">redis:</span>                <span class="yaml-c"># Bitnami-Subchart, kann via external:true deaktiviert werden</span>
+  <span class="yaml-k">enabled:</span> <span class="yaml-v">true</span>
+  <span class="yaml-k">architecture:</span> <span class="yaml-v">standalone</span>
+  <span class="yaml-k">auth:</span> { <span class="yaml-k">existingSecret:</span> <span class="yaml-v">linkhop-redis</span> }
+
+<span class="yaml-k">postgres:</span>             <span class="yaml-c"># extern erwartet, z.B. via cloudnative-pg Cluster</span>
+  <span class="yaml-k">existingSecret:</span> <span class="yaml-v">linkhop-pg</span>      <span class="yaml-c"># keys: host, port, user, password, database</span>
+
+<span class="yaml-k">ingress:</span>
+  <span class="yaml-k">enabled:</span> <span class="yaml-v">true</span>
+  <span class="yaml-k">className:</span> <span class="yaml-v">traefik</span>
+  <span class="yaml-k">annotations:</span>
+    <span class="yaml-v">external-dns.alpha.kubernetes.io/hostname: linkhop.paul.wtf</span>
+  <span class="yaml-k">tls:</span>
+    <span class="yaml-k">enabled:</span> <span class="yaml-v">true</span>
+    <span class="yaml-k">issuerRef:</span> <span class="yaml-v">letsencrypt-prod</span>  <span class="yaml-c"># erzeugt Certificate-CR wenn gesetzt</span>
+
+<span class="yaml-k">networkPolicy:</span> { <span class="yaml-k">enabled:</span> <span class="yaml-v">true</span> }
+<span class="yaml-k">podDisruptionBudget:</span> { <span class="yaml-k">enabled:</span> <span class="yaml-v">true</span>, <span class="yaml-k">minAvailable:</span> <span class="yaml-v">1</span> }</pre>
+
+  <div class="grid">
+    <div class="box">
+      <h4>Images</h4>
+      <p>Zwei Images: <code>linkhop-backend</code>, <code>linkhop-frontend</code>. Build in GitHub Actions, Push zu <code>ghcr.io</code>. Tags: Git-SHA + SemVer.</p>
+    </div>
+    <div class="box">
+      <h4>Secrets</h4>
+      <p>Chart erzeugt <em>keine</em> API-Credentials. Nur <code>existingSecret</code>-Referenzen. Kompatibel mit external-secrets.</p>
+    </div>
+    <div class="box">
+      <h4>Datenbank</h4>
+      <p>Postgres extern erwartet (cloudnative-pg <code>Cluster</code> separat). Backend läuft Migrationen per <code>alembic</code> als initContainer. Tabellen: <code>conversions</code>, <code>api_keys</code>.</p>
+    </div>
+    <div class="box">
+      <h4>Probes</h4>
+      <p>Backend <code>/api/v1/health</code>. Frontend statisches <code>/</code>. Readiness blockiert Traffic bis Redis+Postgres erreichbar.</p>
+    </div>
+  </div>
+
+  <h3>Publish</h3>
+  <p>Chart wird in <code>gh-pages</code> (oder ChartMuseum) veröffentlicht. Dann per FluxCD-<code>HelmRelease</code> gegen dein <code>paulwtf</code>-Cluster gefahren, Values als ConfigMap in <code>fluxcd/apps/linkhop/</code>. Ein separater PR in deinem Flux-Repo pinnt die Version.</p>
+
+</div>

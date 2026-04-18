@@ -1,0 +1,118 @@
+<h2>linkhop — Matching-Logik (Abschnitt 2/5)</h2>
+<p class="subtitle">Wie aus einem Input-Link Treffer auf anderen Diensten werden</p>
+
+<style>
+  .flow {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    border-radius: 12px;
+    padding: 28px 24px;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .flow .step {
+    background: #313244;
+    border: 1px solid #45475a;
+    border-left: 3px solid #b4befe;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+  }
+  .flow .step h4 {
+    margin: 0 0 4px;
+    color: #b4befe;
+    font-size: 13px;
+    letter-spacing: .03em;
+  }
+  .flow .step p { margin: 0; font-size: 12px; color: #a6adc8; line-height: 1.55; }
+  .flow .step code {
+    background: #45475a;
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: #f9e2af;
+    font-size: 11px;
+  }
+  .flow .arrow { text-align: center; color: #6c7086; font-size: 12px; margin: -4px 0 6px; }
+  .flow .branch {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+  .flow .branch .step { margin-bottom: 0; }
+  .flow .branch .step.primary { border-left-color: #a6e3a1; }
+  .flow .branch .step.fallback { border-left-color: #f9e2af; }
+  .flow .branch .step.last { border-left-color: #f38ba8; }
+  .flow .legend {
+    display: flex;
+    gap: 16px;
+    margin-top: 20px;
+    font-size: 11px;
+    color: #a6adc8;
+  }
+  .flow .legend span::before {
+    content: "";
+    display: inline-block;
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .flow .legend .pri::before { background: #a6e3a1; }
+  .flow .legend .fbk::before { background: #f9e2af; }
+  .flow .legend .last::before { background: #f38ba8; }
+</style>
+
+<div class="flow">
+
+  <div class="step">
+    <h4>1. Normalisieren</h4>
+    <p>URL parsen → <code>source</code>, <code>type</code> (track/album/artist), <code>id</code>. Unbekannt? → 400 mit klarer Fehlermeldung.</p>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step">
+    <h4>2. Cache-Check</h4>
+    <p>Key <code>source:type:id</code> in Redis. Hit → sofort zurück. Miss → weiter.</p>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step">
+    <h4>3. Source-Resolve</h4>
+    <p>Adapter des Input-Dienstes holt Metadaten: Titel, Artists, Dauer, Release-Datum, Artwork, <code>isrc</code> (Tracks) oder <code>upc</code> (Alben).</p>
+  </div>
+  <div class="arrow">↓ für jeden Target-Dienst parallel ↓</div>
+
+  <div class="branch">
+    <div class="step primary">
+      <h4>3a. ID-Match</h4>
+      <p>Tracks: Suche per ISRC. Alben: per UPC. Treffer → Confidence 1.0.</p>
+    </div>
+    <div class="step fallback">
+      <h4>3b. Metadaten-Match</h4>
+      <p>Fällt 3a aus → Suche per <code>artist + title (+ duration ±2s)</code>. Top-3 Treffer scoren.</p>
+    </div>
+    <div class="step last">
+      <h4>3c. Kein Treffer</h4>
+      <p>Ergebnis markiert <code>not_found</code>. UI zeigt "nicht verfügbar", kein Fake-Link.</p>
+    </div>
+  </div>
+
+  <div class="arrow" style="margin-top:12px">↓</div>
+
+  <div class="step">
+    <h4>4. Scoring</h4>
+    <p>Confidence 0–1 aus: ID-Match (+1), Titel-Levenshtein, Artist-Overlap, Dauer-Abweichung. Schwelle ≥ 0.7 = "sicher"; 0.4–0.7 = "wahrscheinlich" (UI-Badge); &lt;0.4 = <code>not_found</code>.</p>
+  </div>
+  <div class="arrow">↓</div>
+
+  <div class="step">
+    <h4>5. Cache-Write + Response</h4>
+    <p>Komplettes Resultat <code>{source_meta, targets:[…]}</code> im Redis mit TTL (Default 7 Tage). Ausgeliefert an Client.</p>
+  </div>
+
+  <div class="legend">
+    <span class="pri">Primärpfad (schnell, sicher)</span>
+    <span class="fbk">Fallback (Metadaten)</span>
+    <span class="last">Fehlgeschlagen</span>
+  </div>
+
+</div>

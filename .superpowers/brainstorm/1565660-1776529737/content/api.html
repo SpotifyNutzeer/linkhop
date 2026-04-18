@@ -1,0 +1,102 @@
+<h2>linkhop — API-Design (Abschnitt 3/5)</h2>
+<p class="subtitle">Öffentliche HTTP-Schnittstelle, OpenAPI-dokumentiert</p>
+
+<style>
+  .api { background: #1e1e2e; color: #cdd6f4; border-radius: 12px; padding: 24px; font-family: ui-sans-serif, system-ui, sans-serif; }
+  .api h3 { color: #b4befe; margin: 0 0 6px; font-size: 14px; letter-spacing: .03em; text-transform: uppercase; }
+  .api h4 { color: #cdd6f4; margin: 16px 0 6px; font-size: 13px; }
+  .api .endpoint {
+    background: #313244;
+    border: 1px solid #45475a;
+    border-left: 3px solid #b4befe;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  .api .verb {
+    display: inline-block;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-right: 8px;
+  }
+  .api .verb.get { background: #a6e3a1; color: #1e1e2e; }
+  .api .verb.post { background: #f9e2af; color: #1e1e2e; }
+  .api code, .api pre {
+    background: #11111b;
+    color: #f9e2af;
+    border-radius: 6px;
+    font-size: 11px;
+    font-family: ui-monospace, monospace;
+  }
+  .api code { padding: 1px 6px; }
+  .api pre { padding: 12px 14px; margin: 8px 0 0; overflow-x: auto; color: #cdd6f4; line-height: 1.5; }
+  .api p { color: #a6adc8; font-size: 12px; margin: 4px 0; line-height: 1.55; }
+  .api .path { color: #cdd6f4; font-weight: 600; font-size: 13px; }
+  .api .kv { color: #a6e3a1; }
+  .api .str { color: #f9e2af; }
+  .api .num { color: #fab387; }
+</style>
+
+<div class="api">
+
+  <h3>Endpoints</h3>
+
+  <div class="endpoint">
+    <span class="verb get">GET</span>
+    <span class="path">/api/v1/convert?url={music_url}&amp;targets={list}</span>
+    <p>Haupt-Endpoint. <code>url</code> Pflicht, <code>targets</code> optional (Default: alle verfügbaren).</p>
+    <pre>{
+  <span class="kv">"source"</span>: {
+    <span class="kv">"service"</span>: <span class="str">"tidal"</span>,
+    <span class="kv">"type"</span>: <span class="str">"track"</span>,
+    <span class="kv">"id"</span>: <span class="str">"123456789"</span>,
+    <span class="kv">"url"</span>: <span class="str">"https://tidal.com/..."</span>,
+    <span class="kv">"title"</span>: <span class="str">"Nightcall"</span>,
+    <span class="kv">"artists"</span>: [<span class="str">"Kavinsky"</span>],
+    <span class="kv">"album"</span>: <span class="str">"Outrun"</span>,
+    <span class="kv">"duration_ms"</span>: <span class="num">225000</span>,
+    <span class="kv">"isrc"</span>: <span class="str">"FR6V81200001"</span>,
+    <span class="kv">"artwork"</span>: <span class="str">"https://..."</span>
+  },
+  <span class="kv">"targets"</span>: {
+    <span class="kv">"spotify"</span>: { <span class="kv">"status"</span>: <span class="str">"ok"</span>, <span class="kv">"url"</span>: <span class="str">"..."</span>, <span class="kv">"confidence"</span>: <span class="num">1.0</span>, <span class="kv">"match"</span>: <span class="str">"isrc"</span> },
+    <span class="kv">"deezer"</span>:  { <span class="kv">"status"</span>: <span class="str">"ok"</span>, <span class="kv">"url"</span>: <span class="str">"..."</span>, <span class="kv">"confidence"</span>: <span class="num">0.92</span>, <span class="kv">"match"</span>: <span class="str">"metadata"</span> },
+    <span class="kv">"youtube_music"</span>: { <span class="kv">"status"</span>: <span class="str">"not_found"</span> }
+  },
+  <span class="kv">"cache"</span>: { <span class="kv">"hit"</span>: <span class="str">false</span>, <span class="kv">"ttl_seconds"</span>: <span class="num">604800</span> }
+}</pre>
+  </div>
+
+  <div class="endpoint">
+    <span class="verb get">GET</span>
+    <span class="path">/api/v1/services</span>
+    <p>Liefert unterstützte Dienste + Fähigkeiten (welche Content-Typen der Dienst kann).</p>
+  </div>
+
+  <div class="endpoint">
+    <span class="verb get">GET</span>
+    <span class="path">/api/v1/health</span>
+    <p>Liveness/Readiness: Redis-Verbindung, Adapter-Status. Für Kubernetes Probes.</p>
+  </div>
+
+  <div class="endpoint">
+    <span class="verb get">GET</span>
+    <span class="path">/api/docs</span>
+    <p>Automatische OpenAPI/Swagger-UI von FastAPI.</p>
+  </div>
+
+  <h3>Auth &amp; Rate-Limit</h3>
+  <p>Ohne Key: 20 req/min pro IP. Mit <code>X-API-Key</code>-Header: 300 req/min. Limits per Values überschreibbar.</p>
+  <p>Key-Verwaltung: CLI auf dem Backend (<code>linkhop-admin issue-key --note "paul"</code>). Keys in Redis, <em>nicht</em> in der Seite anfragbar — bewusst low-profile.</p>
+
+  <h3>Fehlerformat</h3>
+  <pre>{
+  <span class="kv">"error"</span>: {
+    <span class="kv">"code"</span>: <span class="str">"unsupported_service"</span>,
+    <span class="kv">"message"</span>: <span class="str">"URL host does not match any known service"</span>
+  }
+}</pre>
+
+</div>

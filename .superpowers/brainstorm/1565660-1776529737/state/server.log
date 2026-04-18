@@ -1,0 +1,8 @@
+{"type":"server-started","port":58895,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:58895","screen_dir":"/home/paul/git/linkconverter/.superpowers/brainstorm/1565660-1776529737/content","state_dir":"/home/paul/git/linkconverter/.superpowers/brainstorm/1565660-1776529737/state"}
+{"type":"screen-added","file":"/home/paul/git/linkconverter/.superpowers/brainstorm/1565660-1776529737/content/intro.html"}
+{"type":"screen-added","file":"/home/paul/git/linkconverter/.superpowers/brainstorm/1565660-1776529737/content/layout.html"}
+{"type":"screen-added","file":"/home/paul/git/linkconverter/.superpowers/brainstorm/1565660-1776529737/content/architecture.html"}
+{"type":"screen-added","file":"/home/paul/git/linkconverter/.superpowers/brainstorm/1565660-1776529737/content/matching.html"}
+{"type":"screen-added","file":"/home/paul/git/linkconverter/.superpowers/brainstorm/1565660-1776529737/content/api.html"}
+{"type":"screen-added","file":"/home/paul/git/linkconverter/.superpowers/brainstorm/1565660-1776529737/content/ui-states.html"}
+{"type":"screen-added","file":"/home/paul/git/linkconverter/.superpowers/brainstorm/1565660-1776529737/content/deployment.html"}

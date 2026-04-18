@@ -1,0 +1,119 @@
+<h2>linkhop — Architektur (Abschnitt 1/5)</h2>
+<p class="subtitle">Komponenten und ihr Zusammenspiel</p>
+
+<style>
+  .arch {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    border-radius: 12px;
+    padding: 28px 24px;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .arch .row {
+    display: grid;
+    grid-template-columns: 1fr 2fr 2fr;
+    gap: 14px;
+    margin-bottom: 14px;
+    align-items: stretch;
+  }
+  .arch .box {
+    background: #313244;
+    border: 1px solid #45475a;
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .arch .box.accent {
+    border-color: #b4befe;
+    background: #292a3d;
+  }
+  .arch .box h4 {
+    margin: 0 0 4px;
+    color: #b4befe;
+    font-size: 13px;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+  }
+  .arch .box p { margin: 0; font-size: 12px; color: #a6adc8; line-height: 1.5; }
+  .arch .box .pill {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #45475a;
+    color: #cdd6f4;
+    margin-right: 4px;
+    margin-top: 6px;
+  }
+  .arch .arrow {
+    text-align: center;
+    color: #6c7086;
+    font-size: 10px;
+    margin: -8px 0 6px;
+  }
+  .arch .label { color: #f9e2af; font-size: 11px; font-weight: 600; }
+</style>
+
+<div class="arch">
+
+  <div class="row">
+    <div class="box">
+      <h4>Client</h4>
+      <p>Browser oder API-Konsument</p>
+      <span class="pill">HTTPS</span>
+    </div>
+    <div class="box accent">
+      <h4>Frontend · SvelteKit</h4>
+      <p>Statisch gebautes UI, Catppuccin Mocha/Latte, spricht nur die eigene API.</p>
+      <span class="pill">Nginx-Pod</span>
+      <span class="pill">/</span>
+    </div>
+    <div class="box accent">
+      <h4>Backend · FastAPI</h4>
+      <p>Resolver + Searcher + Scorer. Rate-Limit pro IP/API-Key. OpenAPI-Docs.</p>
+      <span class="pill">Python-Pod</span>
+      <span class="pill">/api/*</span>
+    </div>
+  </div>
+
+  <div class="arrow">↓ Backend ruft an ↓</div>
+
+  <div class="row">
+    <div class="box">
+      <h4>Cache · Redis</h4>
+      <p>Gelöste Tracks/Alben/Artists nach URL-Hash. TTL konfigurierbar.</p>
+      <span class="pill">In-Cluster</span>
+    </div>
+    <div class="box">
+      <h4>Service-Adapter</h4>
+      <p>Je ein Modul pro Dienst. Gemeinsames Interface: <span class="label">resolve(url)</span>, <span class="label">search(meta)</span>.</p>
+      <span class="pill">Spotify</span>
+      <span class="pill">Deezer</span>
+      <span class="pill">Tidal</span>
+      <span class="pill">YT Music</span>
+    </div>
+    <div class="box">
+      <h4>Externe APIs</h4>
+      <p>Spotify Web API, Deezer Public API, Tidal OpenAPI, ytmusicapi/YT Data.</p>
+      <span class="pill">OAuth/Keys</span>
+      <span class="pill">Secrets</span>
+    </div>
+  </div>
+
+  <div class="arrow" style="margin-top:14px">─── deployment ───</div>
+
+  <div class="row">
+    <div class="box">
+      <h4>Helm-Chart</h4>
+      <p>Generisch, Values-getrieben. Ingress-Klasse, DNS- und TLS-Annotationen konfigurierbar.</p>
+    </div>
+    <div class="box">
+      <h4>Traefik Ingress</h4>
+      <p>Eingang. TLS via cert-manager. DNS via external-dns.</p>
+    </div>
+    <div class="box">
+      <h4>Secrets</h4>
+      <p>API-Credentials via <span class="label">existingSecret</span> — kompatibel mit external-secrets.</p>
+    </div>
+  </div>
+
+</div>
