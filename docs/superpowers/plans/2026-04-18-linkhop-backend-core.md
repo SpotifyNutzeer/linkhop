@@ -3429,7 +3429,7 @@ Running Tally: **69 findings / 27 rejected über 14 Tasks**.
 - Create: `backend/src/linkhop/ratelimit.py`
 - Create: `backend/tests/test_ratelimit.py`
 
-- [ ] **Step 15.1: Test — `tests/test_ratelimit.py`**
+- [x] **Step 15.1: Test — `tests/test_ratelimit.py`**
 
 ```python
 import fakeredis.aioredis
@@ -3479,13 +3479,13 @@ async def test_custom_override_used_when_provided(redis_client):
     assert await rl.check(identifier="key:k", is_authenticated=True, override=9) is False
 ```
 
-- [ ] **Step 15.2: Test laufen — FAIL**
+- [x] **Step 15.2: Test laufen — FAIL**
 
 ```bash
 cd backend && pytest tests/test_ratelimit.py -v
 ```
 
-- [ ] **Step 15.3: `src/linkhop/ratelimit.py` schreiben**
+- [x] **Step 15.3: `src/linkhop/ratelimit.py` schreiben**
 
 ```python
 from __future__ import annotations
@@ -3516,7 +3516,7 @@ class RateLimiter:
         return count <= limit
 ```
 
-- [ ] **Step 15.4: Tests ausführen**
+- [x] **Step 15.4: Tests ausführen**
 
 ```bash
 cd backend && pytest tests/test_ratelimit.py -v
@@ -3524,12 +3524,40 @@ cd backend && pytest tests/test_ratelimit.py -v
 
 Expected: `5 passed`.
 
-- [ ] **Step 15.5: Commit**
+- [x] **Step 15.5: Commit**
 
 ```bash
 git add backend/
 git commit -m "feat(backend): Redis-backed rate limiter"
 ```
+
+**Post-Implementation-Bilanz (Task 15):**
+
+Pre-Dispatch-Plan-Selbstcheck: Keine Patches nötig. Drei latente Punkte dokumentiert
+und bewusst akzeptiert (Minutengrenzen-Test-Flakiness unwahrscheinlich, Fixed-Window-
+Burst MVP-akzeptabel, `EXPIRE` jedesmal statt `EXPIRE NX` Mikro-Opt).
+
+Feat-Commit (`4601ad9`): 5 Tests, 129 passed.
+
+Quality-Review: **10 findings, 0 akzeptiert, 10 rejected**.
+- C1 ("Pipeline nicht atomar ohne `transaction=True`") → REJECT: empirisch widerlegt.
+  `redis-py 7.4` Pipeline-Signatur ist `(transaction: bool = True, ...)`. INCR+EXPIRE
+  laufen per Default in MULTI/EXEC — kein Leak-Fenster möglich.
+- M1 (Identifier-Length-Cap) → REJECT: Identifier kommt aus trusted Middleware
+  (IP oder `key:<uuid>`), nicht User-Input. api_keys-Analogie hinkt.
+- M2 (`override=0` semantisch unklar) → REJECT: Mathematisch eindeutig Kill-Switch.
+- M3 (`check()` returns only bool) → REJECT: Plan-konform. `Retry-After` kann
+  Middleware statisch setzen. Dataclass-Return wäre premature generalization.
+- M4 (Burst-Boundary untested) → REJECT: Selbst als MVP-Limit dokumentiert.
+  Rollover-Test wäre `time.time`-Mock-abhängig und flakey.
+- m1 (NTP-Clock-Skew) → REJECT: Slew statt Step bei `chronyd`/`ntpd`.
+- m2 (is_authenticated=True, override=None untested) → REJECT: Reviewer hat
+  falsch gelesen — `test_authenticated_uses_higher_limit` testet genau diesen Pfad.
+- m3 (`EXPIRE NX`) → REJECT: Innerhalb MULTI/EXEC keine Round-Trip-Ersparnis.
+- m4 (Concurrency-Test) → REJECT: Pipeline-Atomizität durch Redis garantiert.
+- m5 (Fail-Open/Closed-Policy) → REJECT: Policy gehört zur Middleware (Task 22).
+
+Running Tally: **79 findings / 37 rejected über 15 Tasks**.
 
 ---
 
