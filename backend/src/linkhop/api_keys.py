@@ -18,8 +18,14 @@ from linkhop.models.db import ApiKey
 # at just 10k active keys, unhandled by create().)
 KEY_PREFIX_LEN = 12
 _KEY_SUFFIX_LEN = 32
+# Upper bound on what we'll feed into argon2.verify; the real keys are 36 chars.
+# Without a cap an attacker could POST a 10 MB "key" and force us to hash it.
+_MAX_KEY_LEN = 128
 _ALPHA = string.ascii_letters + string.digits
 _hasher = PasswordHasher()
+# Dummy hash used in verify() to equalise wall-clock between prefix-miss and
+# prefix-hit so timing alone cannot confirm whether a given prefix is live.
+_DUMMY_HASH = _hasher.hash("dummy")
 
 
 def _generate_plain_key() -> tuple[str, str]:
@@ -50,13 +56,19 @@ class ApiKeyService:
         return full, row
 
     async def verify(self, presented: str) -> ApiKey | None:
-        if len(presented) < KEY_PREFIX_LEN:
+        if not (KEY_PREFIX_LEN <= len(presented) <= _MAX_KEY_LEN):
             return None
         prefix = presented[:KEY_PREFIX_LEN]
         row = await self._s.scalar(
             select(ApiKey).where(ApiKey.key_prefix == prefix, ApiKey.revoked_at.is_(None))
         )
         if row is None:
+            # Run argon2 against a dummy hash anyway so miss and hit take the same
+            # wall-clock time — otherwise timing alone confirms which prefixes are live.
+            try:
+                _hasher.verify(_DUMMY_HASH, presented)
+            except VerifyMismatchError:
+                pass
             return None
         try:
             _hasher.verify(row.key_hash, presented)
