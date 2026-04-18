@@ -2630,14 +2630,12 @@ git commit -m "feat(backend): matching and scoring primitives"
 - Create: `backend/src/linkhop/pipeline.py`
 - Create: `backend/tests/test_pipeline.py`
 
-- [ ] **Step 12.1: Test schreiben — `tests/test_pipeline.py`**
+- [x] **Step 12.1: Test schreiben — `tests/test_pipeline.py`**
 
 ```python
-from types import SimpleNamespace
-
 import pytest
 
-from linkhop.adapters.base import AdapterError
+from linkhop.adapters.base import AdapterError, AdapterCapabilities
 from linkhop.models.domain import ContentType, ResolvedContent, SearchHit
 from linkhop.pipeline import Pipeline
 from linkhop.url_parser import ParsedUrl
@@ -2652,21 +2650,37 @@ def source_meta() -> ResolvedContent:
     )
 
 
-class FakeAdapter:
-    service_id = "fake"
-    capabilities = SimpleNamespace(supports=lambda t: True, track=True, album=True, artist=True)
+def target_meta(service: str, title: str = "Nightcall", duration_ms: int | None = 257000,
+                artists: tuple[str, ...] = ("Kavinsky",)) -> ResolvedContent:
+    return ResolvedContent(
+        service=service, type=ContentType.TRACK, id="x",
+        url=f"https://{service}/x", title=title,
+        artists=artists, album=None,
+        duration_ms=duration_ms, isrc=None, upc=None, artwork="",
+    )
 
-    def __init__(self, service_id, resolve_value=None, search_value=None, raise_on_search=False):
+
+class FakeAdapter:
+    capabilities = AdapterCapabilities(track=True, album=True, artist=True)
+
+    def __init__(self, service_id, resolve_value=None, search_value=None,
+                 raise_on_search=False, resolve_by_id=None, raise_on_resolve=False):
         self.service_id = service_id
         self._resolve_value = resolve_value
         self._search_value = search_value or []
-        self._raise = raise_on_search
+        self._raise_search = raise_on_search
+        self._resolve_by_id = resolve_by_id or {}
+        self._raise_resolve = raise_on_resolve
 
     async def resolve(self, parsed):
+        if self._raise_resolve:
+            raise AdapterError(self.service_id, "resolve boom")
+        if parsed.id in self._resolve_by_id:
+            return self._resolve_by_id[parsed.id]
         return self._resolve_value
 
     async def search(self, meta, target_type):
-        if self._raise:
+        if self._raise_search:
             raise AdapterError(self.service_id, "boom")
         return self._search_value
 
@@ -2681,7 +2695,7 @@ async def test_pipeline_resolves_and_searches():
         SearchHit(service="deezer", id="dz1", url="https://www.deezer.com/track/dz1",
                   confidence=1.0, match="isrc"),
     ])
-    pipeline = Pipeline({"tidal": tidal, "spotify": spotify, "deezer": deezer}, resolver_factory=None)
+    pipeline = Pipeline({"tidal": tidal, "spotify": spotify, "deezer": deezer})
 
     result = await pipeline.convert(ParsedUrl("tidal", "track", "1"))
     assert result.source.title == "Nightcall"
@@ -2692,10 +2706,16 @@ async def test_pipeline_resolves_and_searches():
 
 async def test_pipeline_source_adapter_not_found_raises():
     tidal = FakeAdapter("tidal", resolve_value=None)
-    pipeline = Pipeline({"tidal": tidal}, resolver_factory=None)
+    pipeline = Pipeline({"tidal": tidal})
 
     with pytest.raises(LookupError):
         await pipeline.convert(ParsedUrl("tidal", "track", "missing"))
+
+
+async def test_pipeline_unknown_source_service_raises():
+    pipeline = Pipeline({"spotify": FakeAdapter("spotify")})
+    with pytest.raises(LookupError):
+        await pipeline.convert(ParsedUrl("tidal", "track", "1"))
 
 
 async def test_pipeline_partial_results_on_adapter_error():
@@ -2704,7 +2724,7 @@ async def test_pipeline_partial_results_on_adapter_error():
         SearchHit(service="spotify", id="sp1", url="...", confidence=1.0, match="isrc"),
     ])
     bad = FakeAdapter("deezer", raise_on_search=True)
-    pipeline = Pipeline({"tidal": tidal, "spotify": good, "deezer": bad}, resolver_factory=None)
+    pipeline = Pipeline({"tidal": tidal, "spotify": good, "deezer": bad})
 
     result = await pipeline.convert(ParsedUrl("tidal", "track", "1"))
     assert result.targets["spotify"].status == "ok"
@@ -2714,38 +2734,129 @@ async def test_pipeline_partial_results_on_adapter_error():
 
 async def test_pipeline_skips_source_service_in_targets():
     tidal = FakeAdapter("tidal", resolve_value=source_meta())
-    pipeline = Pipeline({"tidal": tidal}, resolver_factory=None)
+    pipeline = Pipeline({"tidal": tidal})
 
     result = await pipeline.convert(ParsedUrl("tidal", "track", "1"))
     assert "tidal" not in result.targets
+
+
+async def test_pipeline_metadata_hit_is_scored_and_marked_ok():
+    tidal = FakeAdapter("tidal", resolve_value=source_meta())
+    spotify = FakeAdapter(
+        "spotify",
+        search_value=[
+            SearchHit(service="spotify", id="sp1", url="https://open.spotify.com/track/sp1",
+                      confidence=0.0, match="metadata"),
+        ],
+        resolve_by_id={"sp1": target_meta("spotify")},
+    )
+    pipeline = Pipeline({"tidal": tidal, "spotify": spotify})
+    result = await pipeline.convert(ParsedUrl("tidal", "track", "1"))
+    # perfect metadata match on track → status "ok", confidence near 1.0
+    assert result.targets["spotify"].status == "ok"
+    assert result.targets["spotify"].match == "metadata"
+    assert result.targets["spotify"].confidence is not None
+    assert result.targets["spotify"].confidence >= 0.95
+
+
+async def test_pipeline_low_confidence_is_marked_ok_low():
+    tidal = FakeAdapter("tidal", resolve_value=source_meta())
+    # Weak candidate: same artist but clearly different title and a 7-second drift
+    # lands the score between 0.4 and 0.7 — "ok_low".
+    spotify = FakeAdapter(
+        "spotify",
+        search_value=[
+            SearchHit(service="spotify", id="sp1", url="https://open.spotify.com/track/sp1",
+                      confidence=0.0, match="metadata"),
+        ],
+        resolve_by_id={
+            "sp1": target_meta("spotify", title="Daybreak", artists=("Kavinsky",),
+                               duration_ms=250000),
+        },
+    )
+    pipeline = Pipeline({"tidal": tidal, "spotify": spotify})
+    result = await pipeline.convert(ParsedUrl("tidal", "track", "1"))
+    assert result.targets["spotify"].status == "ok_low"
+    assert result.targets["spotify"].match == "metadata"
+
+
+async def test_pipeline_metadata_hit_below_threshold_is_not_found():
+    tidal = FakeAdapter("tidal", resolve_value=source_meta())
+    spotify = FakeAdapter(
+        "spotify",
+        search_value=[
+            SearchHit(service="spotify", id="sp1", url="https://open.spotify.com/track/sp1",
+                      confidence=0.0, match="metadata"),
+        ],
+        resolve_by_id={
+            "sp1": target_meta("spotify", title="Completely Different",
+                               artists=("Someone Else",), duration_ms=120000),
+        },
+    )
+    pipeline = Pipeline({"tidal": tidal, "spotify": spotify})
+    result = await pipeline.convert(ParsedUrl("tidal", "track", "1"))
+    assert result.targets["spotify"].status == "not_found"
+
+
+async def test_pipeline_empty_hits_is_not_found():
+    tidal = FakeAdapter("tidal", resolve_value=source_meta())
+    spotify = FakeAdapter("spotify", search_value=[])
+    pipeline = Pipeline({"tidal": tidal, "spotify": spotify})
+    result = await pipeline.convert(ParsedUrl("tidal", "track", "1"))
+    assert result.targets["spotify"].status == "not_found"
+
+
+async def test_pipeline_swallows_score_resolve_error():
+    # A failure while fetching the target's full metadata for scoring must not
+    # kill the whole conversion — that target becomes not_found, others proceed.
+    tidal = FakeAdapter("tidal", resolve_value=source_meta())
+    spotify = FakeAdapter(
+        "spotify",
+        search_value=[
+            SearchHit(service="spotify", id="sp1", url="https://open.spotify.com/track/sp1",
+                      confidence=0.0, match="metadata"),
+        ],
+        raise_on_resolve=True,
+    )
+    deezer = FakeAdapter("deezer", search_value=[
+        SearchHit(service="deezer", id="dz1", url="https://www.deezer.com/track/dz1",
+                  confidence=1.0, match="isrc"),
+    ])
+    pipeline = Pipeline({"tidal": tidal, "spotify": spotify, "deezer": deezer})
+    result = await pipeline.convert(ParsedUrl("tidal", "track", "1"))
+    assert result.targets["spotify"].status == "not_found"
+    assert result.targets["deezer"].status == "ok"
 ```
 
-- [ ] **Step 12.2: Test laufen — FAIL**
+- [x] **Step 12.2: Test laufen — FAIL**
 
 ```bash
 cd backend && pytest tests/test_pipeline.py -v
 ```
 
-- [ ] **Step 12.3: `src/linkhop/pipeline.py` schreiben**
+- [x] **Step 12.3: `src/linkhop/pipeline.py` schreiben**
 
 ```python
 from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
+from typing import Literal
 
 from linkhop.adapters.base import AdapterError, ServiceAdapter
 from linkhop.matching import score_candidate, threshold_status
-from linkhop.models.domain import ContentType, ResolvedContent, SearchHit
+from linkhop.models.domain import ContentType, MatchType, ResolvedContent, SearchHit
 from linkhop.url_parser import ParsedUrl
+
+TargetStatus = Literal["ok", "ok_low", "not_found", "error"]
 
 
 @dataclass(slots=True)
 class TargetOutcome:
-    status: str          # "ok" | "not_found" | "error"
+    status: TargetStatus
     url: str | None = None
     confidence: float | None = None
-    match: str | None = None
+    match: MatchType | None = None
     message: str | None = None
 
 
@@ -2756,9 +2867,8 @@ class ConvertOutcome:
 
 
 class Pipeline:
-    def __init__(self, adapters: dict[str, ServiceAdapter], resolver_factory) -> None:
+    def __init__(self, adapters: dict[str, ServiceAdapter]) -> None:
         self._adapters = adapters
-        self._resolver_factory = resolver_factory
 
     async def convert(self, parsed: ParsedUrl) -> ConvertOutcome:
         source_adapter = self._adapters.get(parsed.service)
@@ -2773,12 +2883,14 @@ class Pipeline:
         type_ = ContentType(parsed.type)
 
         tasks = [self._search_one(sid, source, type_) for sid in target_ids]
-        results = await asyncio.gather(*tasks, return_exceptions=False)
+        results = await asyncio.gather(*tasks)
 
         targets = dict(zip(target_ids, results, strict=True))
         return ConvertOutcome(source=source, targets=targets)
 
-    async def _search_one(self, service_id: str, source: ResolvedContent, type_: ContentType) -> TargetOutcome:
+    async def _search_one(
+        self, service_id: str, source: ResolvedContent, type_: ContentType
+    ) -> TargetOutcome:
         adapter = self._adapters[service_id]
         try:
             hits: list[SearchHit] = await adapter.search(source, type_)
@@ -2792,10 +2904,11 @@ class Pipeline:
 
         id_hits = [h for h in hits if h.match in {"isrc", "upc"}]
         if id_hits:
-            best = id_hits[0]
-            return TargetOutcome(status="ok", url=best.url, confidence=1.0, match=best.match)
+            id_best = id_hits[0]
+            return TargetOutcome(status="ok", url=id_best.url, confidence=1.0, match=id_best.match)
 
-        best, best_score = None, 0.0
+        best: SearchHit | None = None
+        best_score = 0.0
         for h in hits:
             score = await self._score_hit(service_id, source, h, type_)
             if score > best_score:
@@ -2804,34 +2917,55 @@ class Pipeline:
         status = threshold_status(best_score)
         if status == "not_found" or best is None:
             return TargetOutcome(status="not_found")
+        # "ok" or "ok_low" — preserve the bucket so the UI can show a "~match" badge.
         return TargetOutcome(
-            status="ok", url=best.url,
+            status=status, url=best.url,
             confidence=round(best_score, 3), match="metadata",
         )
 
-    async def _score_hit(self, service_id: str, source: ResolvedContent,
-                         hit: SearchHit, type_: ContentType) -> float:
+    async def _score_hit(
+        self, service_id: str, source: ResolvedContent, hit: SearchHit, type_: ContentType
+    ) -> float:
         adapter = self._adapters[service_id]
-        full = await adapter.resolve(ParsedUrl(service=service_id, type=type_.value, id=hit.id))
+        try:
+            full = await adapter.resolve(
+                ParsedUrl(service=service_id, type=type_.value, id=hit.id)
+            )
+        except Exception:
+            # A failure fetching the candidate's full metadata must not kill the whole
+            # convert call — just drop this hit out of scoring.
+            return 0.0
         if full is None:
             return 0.0
         return score_candidate(source, full, match="metadata")
 ```
 
-- [ ] **Step 12.4: Tests ausführen**
+- [x] **Step 12.4: Tests ausführen**
 
 ```bash
 cd backend && pytest tests/test_pipeline.py -v
 ```
 
-Expected: `4 passed`.
+Actual: `10 passed`. Full suite: `121 passed`.
 
-- [ ] **Step 12.5: Commit**
+- [x] **Step 12.5: Commit**
 
-```bash
-git add backend/
-git commit -m "feat(backend): convert pipeline with parallel adapter search"
 ```
+dc8f5bb feat(backend): matching pipeline — orchestrator with gather-isolated per-target scoring
+```
+
+**Post-Implementation-Bilanz (2026-04-18):**
+- Spec-Review: 0 Abweichungen über alle 8 geprüften Punkte (incl. `id_best`-Rename als reiner lokaler Rename bestätigt).
+- Quality-Review: 7 Findings (2 SIGNIFICANT, 5 MINOR) — **alle abgelehnt** mit empirischer Begründung:
+  1. Breites `except Exception` ohne Logging: abgelehnt, breite Isolation ist beabsichtigt; Logging ist Task 24.
+  2. ID-Hit ohne ISRC-Cross-Check: abgelehnt, der ISRC-Filter ist Bestandteil der Query-URL (`/track/isrc:X`), kein nachträglicher Abgleich nötig.
+  3. Kein Logging → siehe (1).
+  4. Dict-Ordering-Kommentar: abgelehnt (Python-Spec seit 3.7, kein WAS-Kommentar).
+  5. `ContentType(parsed.type)` → `LookupError`: abgelehnt, interne Grenze, `url_parser` garantiert Typ.
+  6. `id_best`-Helper extrahieren: abgelehnt, linearer Flow ist bereits unzweideutig mutually exclusive.
+  7. Fehlender Gather-Sibling-Test: abgelehnt, `test_pipeline_swallows_score_resolve_error` enthält bereits das exakte Szenario.
+- Keine Code-Änderungen nach Review; dadurch **kein** Refactor-Commit für Task 12.
+- Laufende Summe über 12 Tasks: 54 reale Findings / 17 abgelehnt.
 
 ---
 
