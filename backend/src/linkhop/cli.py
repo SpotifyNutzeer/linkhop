@@ -75,15 +75,18 @@ def key_list() -> None:
 @key.command("revoke")
 @click.argument("key_id")
 def key_revoke(key_id: str) -> None:
-    async def _run():
+    async def _run() -> int:
         engine, factory = _make_async_session_factory()
         try:
             async with factory() as session:
-                await ApiKeyService(session).revoke(key_id)
-                click.echo(f"revoked: {key_id}")
+                return await ApiKeyService(session).revoke(key_id)
         finally:
             await engine.dispose()
-    asyncio.run(_run())
+    hit = asyncio.run(_run())
+    if hit == 0:
+        click.echo(f"no such key: {key_id}", err=True)
+        raise click.exceptions.Exit(code=1)
+    click.echo(f"revoked: {key_id}")
 
 
 def main() -> None:

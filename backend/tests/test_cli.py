@@ -44,3 +44,17 @@ def test_key_list_and_revoke(tmp_path, monkeypatch):
 
     listed2 = runner.invoke(cli, ["key", "list"])
     assert "revoked" in listed2.output.lower()
+
+
+def test_revoke_unknown_id_fails_loudly(tmp_path, monkeypatch):
+    # Ohne diesen Test läuft ein blindes UPDATE auf eine unbekannte UUID
+    # lautlos als "revoked: …" durch — der Operator glaubt, ein Key sei
+    # abgeschaltet, obwohl nichts passiert ist.
+    db_path = tmp_path / "db.sqlite"
+    monkeypatch.setenv("LINKHOP_DATABASE_URL", f"sqlite+aiosqlite:///{db_path}")
+    runner = CliRunner()
+    assert runner.invoke(cli, ["init-db"]).exit_code == 0
+
+    result = runner.invoke(cli, ["key", "revoke", "00000000-0000-0000-0000-000000000000"])
+    assert result.exit_code == 1
+    assert "no such key" in (result.output + (result.stderr or "")).lower()

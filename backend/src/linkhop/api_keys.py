@@ -76,11 +76,15 @@ class ApiKeyService:
             return None
         return row
 
-    async def revoke(self, key_id: str) -> None:
-        await self._s.execute(
+    async def revoke(self, key_id: str) -> int:
+        # Rückgabe = matched rows, damit Aufrufer (CLI) zwischen "revoked" und
+        # "kein Treffer" unterscheiden kann. Ein blindes UPDATE auf eine
+        # falsche UUID gibt sonst lautlos Erfolg — klassische Ops-Falle.
+        result = await self._s.execute(
             update(ApiKey).where(ApiKey.id == key_id).values(revoked_at=datetime.now(tz=UTC))
         )
         await self._s.commit()
+        return result.rowcount or 0
 
     async def list_all(self) -> list[ApiKey]:
         result = await self._s.scalars(select(ApiKey).order_by(ApiKey.created_at))
