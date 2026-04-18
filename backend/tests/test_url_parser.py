@@ -4,10 +4,10 @@ from linkhop.url_parser import ParsedUrl, UnsupportedUrlError, parse
 
 
 @pytest.mark.parametrize("url,service,type_,id_", [
-    ("https://open.spotify.com/track/6habFhsOp2NvshLv26DqMb", "spotify", "track", "6habFhsOp2NvshLv26DqMb"),
-    ("https://open.spotify.com/album/2dIGnmEIy1WZIcZCFSj6i8", "spotify", "album", "2dIGnmEIy1WZIcZCFSj6i8"),
-    ("https://open.spotify.com/artist/0du5cEVh5yTK9QJze8zA0C", "spotify", "artist", "0du5cEVh5yTK9QJze8zA0C"),
-    ("https://open.spotify.com/track/6habFhsOp2NvshLv26DqMb?si=abc", "spotify", "track", "6habFhsOp2NvshLv26DqMb"),
+    ("https://open.spotify.com/track/6habFhsOp2NvshLv26DqMb", "spotify", "track", "6habFhsOp2NvshLv26DqMb"),  # noqa: E501
+    ("https://open.spotify.com/album/2dIGnmEIy1WZIcZCFSj6i8", "spotify", "album", "2dIGnmEIy1WZIcZCFSj6i8"),  # noqa: E501
+    ("https://open.spotify.com/artist/0du5cEVh5yTK9QJze8zA0C", "spotify", "artist", "0du5cEVh5yTK9QJze8zA0C"),  # noqa: E501
+    ("https://open.spotify.com/track/6habFhsOp2NvshLv26DqMb?si=abc", "spotify", "track", "6habFhsOp2NvshLv26DqMb"),  # noqa: E501
     ("spotify:track:6habFhsOp2NvshLv26DqMb", "spotify", "track", "6habFhsOp2NvshLv26DqMb"),
     ("https://www.deezer.com/track/3135556", "deezer", "track", "3135556"),
     ("https://www.deezer.com/album/302127", "deezer", "album", "302127"),
@@ -18,7 +18,7 @@ from linkhop.url_parser import ParsedUrl, UnsupportedUrlError, parse
     ("https://tidal.com/album/77640616", "tidal", "album", "77640616"),
     ("https://tidal.com/artist/3527", "tidal", "artist", "3527"),
     ("https://music.youtube.com/watch?v=dQw4w9WgXcQ", "youtube_music", "track", "dQw4w9WgXcQ"),
-    ("https://music.youtube.com/playlist?list=OLAK5uy_1234", "youtube_music", "album", "OLAK5uy_1234"),
+    ("https://music.youtube.com/playlist?list=OLAK5uy_1234", "youtube_music", "album", "OLAK5uy_1234"),  # noqa: E501
     ("https://music.youtube.com/channel/UC1234", "youtube_music", "artist", "UC1234"),
 ])
 def test_parse_valid(url, service, type_, id_):
