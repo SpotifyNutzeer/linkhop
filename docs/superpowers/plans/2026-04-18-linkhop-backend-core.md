@@ -1415,6 +1415,55 @@ async def test_resolve_returns_none_on_404(adapter: SpotifyAdapter):
     respx.post("https://accounts.spotify.com/api/token").respond(json=fix("spotify_token.json"))
     respx.get("https://api.spotify.com/v1/tracks/missing").respond(status_code=404)
     assert await adapter.resolve(ParsedUrl("spotify", "track", "missing")) is None
+
+
+@respx.mock
+async def test_resolve_caches_token(adapter: SpotifyAdapter):
+    token_route = respx.post("https://accounts.spotify.com/api/token").respond(
+        json=fix("spotify_token.json")
+    )
+    respx.get("https://api.spotify.com/v1/tracks/6habFhsOp2NvshLv26DqMb").respond(
+        json=fix("spotify_track.json")
+    )
+    await adapter.resolve(ParsedUrl("spotify", "track", "6habFhsOp2NvshLv26DqMb"))
+    await adapter.resolve(ParsedUrl("spotify", "track", "6habFhsOp2NvshLv26DqMb"))
+    assert token_route.call_count == 1
+
+
+@respx.mock
+async def test_resolve_raises_on_5xx(adapter: SpotifyAdapter):
+    from linkhop.adapters.base import AdapterError
+
+    respx.post("https://accounts.spotify.com/api/token").respond(json=fix("spotify_token.json"))
+    respx.get("https://api.spotify.com/v1/tracks/boom").respond(status_code=500)
+    with pytest.raises(AdapterError):
+        await adapter.resolve(ParsedUrl("spotify", "track", "boom"))
+
+
+@respx.mock
+async def test_resolve_raises_on_token_fetch_failure(adapter: SpotifyAdapter):
+    from linkhop.adapters.base import AdapterError
+
+    respx.post("https://accounts.spotify.com/api/token").respond(status_code=503)
+    with pytest.raises(AdapterError):
+        await adapter.resolve(ParsedUrl("spotify", "track", "6habFhsOp2NvshLv26DqMb"))
+
+
+@respx.mock
+async def test_resolve_invalidates_token_on_401(adapter: SpotifyAdapter):
+    from linkhop.adapters.base import AdapterError
+
+    token_route = respx.post("https://accounts.spotify.com/api/token").respond(
+        json=fix("spotify_token.json")
+    )
+    respx.get("https://api.spotify.com/v1/tracks/revoked").respond(status_code=401)
+    respx.get("https://api.spotify.com/v1/tracks/6habFhsOp2NvshLv26DqMb").respond(
+        json=fix("spotify_track.json")
+    )
+    with pytest.raises(AdapterError):
+        await adapter.resolve(ParsedUrl("spotify", "track", "revoked"))
+    await adapter.resolve(ParsedUrl("spotify", "track", "6habFhsOp2NvshLv26DqMb"))
+    assert token_route.call_count == 2
 ```
 
 - [ ] **Step 8.3: Test laufen — FAIL**
@@ -1430,6 +1479,7 @@ from __future__ import annotations
 
 import base64
 import time
+from typing import Any
 
 import httpx
 
@@ -1464,17 +1514,21 @@ class SpotifyAdapter:
         if resp.status_code != 200:
             raise AdapterError("spotify", f"token fetch failed: {resp.status_code}")
         body = resp.json()
-        self._token = body["access_token"]
+        token: str = body["access_token"]
+        self._token = token
         self._token_exp = time.monotonic() + int(body.get("expires_in", 3600))
-        return self._token
+        return token
 
-    async def _get(self, path: str) -> dict | None:
+    async def _get(self, path: str) -> dict[str, Any] | None:
         token = await self._ensure_token()
         resp = await self._http.get(
             f"{self._API}{path}", headers={"Authorization": f"Bearer {token}"}
         )
         if resp.status_code == 404:
             return None
+        if resp.status_code == 401:
+            self._token = None
+            self._token_exp = 0.0
         if resp.status_code >= 400:
             raise AdapterError("spotify", f"GET {path}: {resp.status_code}")
         return resp.json()
@@ -1543,7 +1597,7 @@ class SpotifyAdapter:
 cd backend && pytest tests/adapters/test_spotify.py -v
 ```
 
-Expected: `4 passed`.
+Expected: `8 passed`.
 
 - [ ] **Step 8.6: Commit**
 

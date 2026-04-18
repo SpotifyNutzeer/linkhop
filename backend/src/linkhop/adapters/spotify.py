@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import time
+from typing import Any
 
 import httpx
 
@@ -36,17 +37,21 @@ class SpotifyAdapter:
         if resp.status_code != 200:
             raise AdapterError("spotify", f"token fetch failed: {resp.status_code}")
         body = resp.json()
-        self._token = body["access_token"]
+        token: str = body["access_token"]
+        self._token = token
         self._token_exp = time.monotonic() + int(body.get("expires_in", 3600))
-        return self._token
+        return token
 
-    async def _get(self, path: str) -> dict | None:
+    async def _get(self, path: str) -> dict[str, Any] | None:
         token = await self._ensure_token()
         resp = await self._http.get(
             f"{self._API}{path}", headers={"Authorization": f"Bearer {token}"}
         )
         if resp.status_code == 404:
             return None
+        if resp.status_code == 401:
+            self._token = None
+            self._token_exp = 0.0
         if resp.status_code >= 400:
             raise AdapterError("spotify", f"GET {path}: {resp.status_code}")
         return resp.json()
