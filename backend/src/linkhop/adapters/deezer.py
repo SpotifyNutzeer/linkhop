@@ -30,8 +30,17 @@ class DeezerAdapter:
         if resp.status_code >= 400:
             raise AdapterError("deezer", f"GET {path}: {resp.status_code}")
         data = resp.json()
-        if isinstance(data, dict) and data.get("error"):
-            return None
+        if isinstance(data, dict):
+            err = data.get("error")
+            if isinstance(err, dict):
+                # Deezer returns 200 with an error payload; code 800 means "no data"
+                # (a legitimate not-found). Any other code is a real service error.
+                if err.get("code") == 800:
+                    return None
+                raise AdapterError(
+                    "deezer",
+                    f"GET {path}: error {err.get('code')} {err.get('message', '')}".strip(),
+                )
         return data
 
     async def resolve(self, parsed: ParsedUrl) -> ResolvedContent | None:
@@ -44,7 +53,9 @@ class DeezerAdapter:
                 url=data["link"], title=data["title"],
                 artists=(data["artist"]["name"],),
                 album=data.get("album", {}).get("title"),
-                duration_ms=int(data["duration"]) * 1000,
+                duration_ms=(
+                    int(data["duration"]) * 1000 if data.get("duration") is not None else None
+                ),
                 isrc=data.get("isrc"), upc=None,
                 artwork=data.get("album", {}).get("cover_xl", ""),
             )
@@ -80,6 +91,7 @@ class DeezerAdapter:
                     service=self.service_id, id=str(data["id"]),
                     url=data["link"], confidence=1.0, match="isrc",
                 )]
+            return []
         if target_type == ContentType.ALBUM and meta.upc:
             data = await self._get(f"/album/upc:{meta.upc}")
             if data:
@@ -87,6 +99,7 @@ class DeezerAdapter:
                     service=self.service_id, id=str(data["id"]),
                     url=data["link"], confidence=1.0, match="upc",
                 )]
+            return []
         title = _strip_quotes(meta.title)
         artist_clause = (
             f' artist:"{_strip_quotes(meta.artists[0])}"' if meta.artists else ""

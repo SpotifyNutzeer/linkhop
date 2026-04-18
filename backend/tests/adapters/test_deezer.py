@@ -145,3 +145,67 @@ async def test_search_omits_artist_clause_when_artists_empty(adapter: DeezerAdap
     q = search_route.calls.last.request.url.params["q"]
     assert q == 'track:"Nightcall"'
     assert "artist:" not in q
+
+
+@respx.mock
+async def test_resolve_raises_on_5xx(adapter: DeezerAdapter):
+    from linkhop.adapters.base import AdapterError
+
+    respx.get("https://api.deezer.com/track/boom").respond(status_code=500)
+    with pytest.raises(AdapterError):
+        await adapter.resolve(ParsedUrl("deezer", "track", "boom"))
+
+
+@respx.mock
+async def test_search_raises_on_non_800_error_payload(adapter: DeezerAdapter):
+    # Deezer signals real service errors via a 200+error payload; code 800 = not found
+    # (handled as None), other codes (e.g. 4=quota) must surface as AdapterError.
+    from linkhop.adapters.base import AdapterError
+
+    respx.get("https://api.deezer.com/search/track").respond(
+        json={"error": {"code": 4, "message": "Quota exceeded"}}
+    )
+    source = ResolvedContent(
+        service="spotify", type=ContentType.TRACK, id="x",
+        url="", title="Nightcall", artists=("Kavinsky",), album=None,
+        duration_ms=None, isrc=None, upc=None, artwork="",
+    )
+    with pytest.raises(AdapterError):
+        await adapter.search(source, ContentType.TRACK)
+
+
+@respx.mock
+async def test_search_album_metadata_fallback(adapter: DeezerAdapter):
+    respx.get("https://api.deezer.com/search/album").respond(
+        json=fix("deezer_search_album.json")
+    )
+    source = ResolvedContent(
+        service="spotify", type=ContentType.ALBUM, id="x",
+        url="", title="OutRun", artists=("Kavinsky",), album=None,
+        duration_ms=None, isrc=None, upc=None, artwork="",
+    )
+    hits = await adapter.search(source, ContentType.ALBUM)
+    assert len(hits) == 1
+    assert hits[0].match == "metadata"
+    assert hits[0].confidence == 0.0
+
+
+@respx.mock
+async def test_search_isrc_miss_does_not_fall_through_to_metadata(adapter: DeezerAdapter):
+    # An ISRC lookup miss must return [] without performing a second /search/track request —
+    # otherwise the matching engine receives unexpected metadata hits.
+    isrc_route = respx.get("https://api.deezer.com/track/isrc:NOPE").respond(
+        json={"error": {"code": 800, "message": "no data"}}
+    )
+    metadata_route = respx.get("https://api.deezer.com/search/track").respond(
+        json=fix("deezer_search_track.json")
+    )
+    source = ResolvedContent(
+        service="spotify", type=ContentType.TRACK, id="x",
+        url="", title="Nightcall", artists=("Kavinsky",), album=None,
+        duration_ms=None, isrc="NOPE", upc=None, artwork="",
+    )
+    hits = await adapter.search(source, ContentType.TRACK)
+    assert hits == []
+    assert isrc_route.call_count == 1
+    assert metadata_route.call_count == 0
