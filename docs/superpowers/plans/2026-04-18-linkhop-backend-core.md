@@ -1017,8 +1017,10 @@ from linkhop.cache import Cache
 @pytest.fixture
 async def cache():
     client = fakeredis.aioredis.FakeRedis()
-    yield Cache(client, default_ttl=3600)
-    await client.aclose()
+    try:
+        yield Cache(client, default_ttl=3600)
+    finally:
+        await client.aclose()
 
 
 async def test_get_returns_none_for_missing(cache: Cache):
@@ -1032,15 +1034,18 @@ async def test_set_and_get_roundtrip(cache: Cache):
 
 async def test_set_with_ttl_honored(cache: Cache):
     await cache.set("k", {"a": 1}, ttl=60)
-    client = cache._redis
-    assert await client.ttl("k") <= 60
+    assert 0 < await cache.ttl("k") <= 60
 
 
-async def test_hash_key_stable():
+async def test_convert_key_format():
     k1 = Cache.convert_key("spotify", "track", "abc")
     k2 = Cache.convert_key("spotify", "track", "abc")
     assert k1 == k2
-    assert k1.startswith("cache:")
+    assert k1 == "cache:spotify:track:abc"
+
+
+async def test_ping_returns_true(cache: Cache):
+    assert await cache.ping() is True
 ```
 
 - [ ] **Step 6.2: Test laufen — FAIL**
@@ -1074,7 +1079,8 @@ class Cache:
         return json.loads(raw)
 
     async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
-        await self._redis.set(key, json.dumps(value), ex=ttl or self._default_ttl)
+        ex = ttl if ttl is not None else self._default_ttl
+        await self._redis.set(key, json.dumps(value), ex=ex)
 
     async def ttl(self, key: str) -> int:
         return await self._redis.ttl(key)
@@ -1082,7 +1088,7 @@ class Cache:
     async def ping(self) -> bool:
         try:
             return await self._redis.ping()
-        except Exception:
+        except (redis.RedisError, OSError):
             return False
 
     @staticmethod
@@ -1096,7 +1102,7 @@ class Cache:
 cd backend && pytest tests/test_cache.py -v
 ```
 
-Expected: `4 passed`.
+Expected: `6 passed`.
 
 - [ ] **Step 6.5: Commit**
 

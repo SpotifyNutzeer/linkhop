@@ -18,7 +18,8 @@ class Cache:
         return json.loads(raw)
 
     async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
-        await self._redis.set(key, json.dumps(value), ex=ttl or self._default_ttl)
+        ex = ttl if ttl is not None else self._default_ttl
+        await self._redis.set(key, json.dumps(value), ex=ex)
 
     async def ttl(self, key: str) -> int:
         return await self._redis.ttl(key)
