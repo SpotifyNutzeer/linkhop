@@ -4822,7 +4822,7 @@ git commit -m "feat(backend): rate-limit middleware + API-key auth"
 - Create: `backend/src/linkhop/cli.py`
 - Create: `backend/tests/test_cli.py`
 
-- [ ] **Step 23.1: Test — `tests/test_cli.py`**
+- [x] **Step 23.1: Test — `tests/test_cli.py`**
 
 ```python
 import re
@@ -4873,7 +4873,7 @@ def test_key_list_and_revoke(tmp_path, monkeypatch):
     assert "revoked" in listed2.output.lower()
 ```
 
-- [ ] **Step 23.2: `src/linkhop/cli.py` schreiben**
+- [x] **Step 23.2: `src/linkhop/cli.py` schreiben**
 
 ```python
 from __future__ import annotations
@@ -4968,7 +4968,7 @@ def main() -> None:
     cli()
 ```
 
-- [ ] **Step 23.3: Tests ausführen**
+- [x] **Step 23.3: Tests ausführen**
 
 ```bash
 cd backend && pytest tests/test_cli.py -v
@@ -4976,12 +4976,29 @@ cd backend && pytest tests/test_cli.py -v
 
 Expected: `2 passed`.
 
-- [ ] **Step 23.4: Commit**
+- [x] **Step 23.4: Commit**
 
 ```bash
 git add backend/
 git commit -m "feat(backend): linkhop-admin CLI for init-db and api-keys"
 ```
+
+### Post-Implementation-Bilanz Task 23 (2026-04-19)
+
+**Dispatch-Patch:** `d2a7c70` — Test-URL auf `sqlite+aiosqlite:///{db_path}` umgestellt; `sqlite:///` hätte im async-Pfad `create_async_engine` an "loaded 'sqlite' is not async" zerlegt.
+
+**Commits:**
+- `c78c522` feat: CLI verbatim (`init-db`, `key create/list/revoke`)
+- `c9700e0` fix: C1 — `ApiKeyService.revoke` returnt rowcount, CLI exit 1 + "no such key" bei 0 Treffern; neuer Test deckt unbekannte UUID ab
+- `e42827d` fix: C2+M3 — `init-db` async via `engine.begin().run_sync(Base.metadata.create_all)`, `_sync_url`-Helper entfernt (brauchte sonst psycopg2 bei Default-DSN)
+- `7a6abde` fix: M10 — `--override` auf `click.IntRange(min=1)` verschärft
+- `dd71f2b` test: M4+M5+L17 — `exit_code`-Asserts vor Regex-Extract, unused imports entfernt
+
+**Tests:** 153 grün (+3 in tests/test_cli.py).
+
+**Review-Findings:** 20 (2C/9M/9L; L15/L18 positive findings). **Accepted:** 7 (C1, C2, M3 implicit, M4, M5, M10, L17) + L19-a (revoke-unknown-Test) kommt mit C1-Commit. **Rejected:** 13 — M6 (Reviewer selbst "not a bug today"), M7 (DB-Error-UX ist Traceback-OK für Ops-CLI), M8 (Plaintext-one-time ist etabliertes API-Key-Pattern), M9 (`--yes`/confirm auf revoke ist CLI-Polish, keine Funktionsbug; post-MVP-Enhancement), M11 (Note-Length-Cap ist Overengineering), L12–L14+L16+L19-b/c+L20 (Sprache/Format/Verbose-Flag — Nits). **Tally gesamt:** 167 Findings / 91 rejected.
+
+**Hazard-Note für M9:** `key revoke` hat keine Bestätigung und keinen `--yes`-Flag. Akzeptiert ops-Polish-Schuld, bis ein eigener Hardening-Task (oder Task 25 "Deployment") die CLI anfasst; aktuell wird die CLI ausschließlich von Operatoren mit Shell-Zugriff genutzt, das Risiko ist kalkuliert.
 
 ---
 
