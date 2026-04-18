@@ -1,17 +1,13 @@
 import re
 
 from click.testing import CliRunner
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from linkhop.cli import cli
 
 
 def test_key_create_prints_plain(tmp_path, monkeypatch):
     db_path = tmp_path / "db.sqlite"
-    # Async-Form setzen, damit `key`-Commands via create_async_engine nicht
-    # "loaded 'sqlite' is not async" werfen; `_sync_url` strippt `+aiosqlite`
-    # im init-db-Pfad zurück.
+    # Async-DSN-Form setzen — alle CLI-Commands nutzen create_async_engine.
     monkeypatch.setenv("LINKHOP_DATABASE_URL", f"sqlite+aiosqlite:///{db_path}")
 
     runner = CliRunner()
@@ -29,8 +25,12 @@ def test_key_list_and_revoke(tmp_path, monkeypatch):
     db_path = tmp_path / "db.sqlite"
     monkeypatch.setenv("LINKHOP_DATABASE_URL", f"sqlite+aiosqlite:///{db_path}")
     runner = CliRunner()
-    runner.invoke(cli, ["init-db"])
+    # exit_code vor dem Weiterarbeiten prüfen — sonst würde ein stummer
+    # Fehler (z.B. DB-Schema fehlt) erst an der Regex-Zeile mit "assert m"
+    # ohne Kontext abbrechen.
+    assert runner.invoke(cli, ["init-db"]).exit_code == 0
     created = runner.invoke(cli, ["key", "create", "--note", "a"])
+    assert created.exit_code == 0, created.output
     # extract id from output (format: "id=<uuid> ...")
     m = re.search(r"id=([a-f0-9-]+)", created.output)
     assert m
