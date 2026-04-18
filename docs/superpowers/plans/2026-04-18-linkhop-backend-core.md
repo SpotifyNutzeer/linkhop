@@ -4836,7 +4836,10 @@ from linkhop.cli import cli
 
 def test_key_create_prints_plain(tmp_path, monkeypatch):
     db_path = tmp_path / "db.sqlite"
-    monkeypatch.setenv("LINKHOP_DATABASE_URL", f"sqlite:///{db_path}")
+    # Async-Form setzen, damit `key`-Commands via create_async_engine nicht
+    # "loaded 'sqlite' is not async" werfen; `_sync_url` strippt `+aiosqlite`
+    # im init-db-Pfad zurück.
+    monkeypatch.setenv("LINKHOP_DATABASE_URL", f"sqlite+aiosqlite:///{db_path}")
 
     runner = CliRunner()
     # First: init (creates tables)
@@ -4851,7 +4854,7 @@ def test_key_create_prints_plain(tmp_path, monkeypatch):
 
 def test_key_list_and_revoke(tmp_path, monkeypatch):
     db_path = tmp_path / "db.sqlite"
-    monkeypatch.setenv("LINKHOP_DATABASE_URL", f"sqlite:///{db_path}")
+    monkeypatch.setenv("LINKHOP_DATABASE_URL", f"sqlite+aiosqlite:///{db_path}")
     runner = CliRunner()
     runner.invoke(cli, ["init-db"])
     created = runner.invoke(cli, ["key", "create", "--note", "a"])
