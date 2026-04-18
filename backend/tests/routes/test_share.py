@@ -14,6 +14,7 @@ from linkhop.config import Settings
 from linkhop.main import create_app
 from linkhop.models.db import Base
 from linkhop.models.domain import ContentType, ResolvedContent, SearchHit
+from linkhop.ratelimit import RateLimiter
 
 
 class StubAdapter:
@@ -41,6 +42,9 @@ def app_with_share():
         rc = fakeredis.aioredis.FakeRedis()
         app.state.redis = rc
         app.state.cache = Cache(rc, default_ttl=60)
+        app.state.ratelimiter = RateLimiter(
+            rc, anonymous_per_minute=1000, with_key_per_minute=1000,
+        )
         app.state.adapters = {
             "tidal": StubAdapter("tidal", resolve_value=ResolvedContent(
                 service="tidal", type=ContentType.TRACK, id="1",

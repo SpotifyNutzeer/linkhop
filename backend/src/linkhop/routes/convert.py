@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 
 from linkhop.cache import Cache
+from linkhop.middleware import enforce_rate_limit
 from linkhop.models.api import (
     CacheInfo, ConvertResponse, ShareInfo, SourceContent, TargetResult,
 )
@@ -19,6 +20,7 @@ async def convert(
     url: str = Query(..., description="Music-service URL"),
     targets: str | None = Query(None, description="Comma-separated list of target service ids"),
     share: bool = Query(False, description="If true, produce a share short-id"),
+    _rl=Depends(enforce_rate_limit),
 ) -> ConvertResponse:
     parsed = parse(url)
 

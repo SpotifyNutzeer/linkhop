@@ -11,6 +11,7 @@ from linkhop.config import Settings
 from linkhop.db import make_engine, make_session_factory
 from linkhop.deps import build_adapter_map
 from linkhop.errors import install_error_handlers
+from linkhop.ratelimit import RateLimiter
 from linkhop.routes import convert as convert_route
 from linkhop.routes import health as health_route
 from linkhop.routes import services as services_route
@@ -35,6 +36,11 @@ async def lifespan(app: FastAPI):
         app.state.http = http
         app.state.redis = redis_client
         app.state.cache = Cache(redis_client, default_ttl=settings.cache_ttl_seconds)
+        app.state.ratelimiter = RateLimiter(
+            redis_client,
+            anonymous_per_minute=settings.rate_anonymous_per_minute,
+            with_key_per_minute=settings.rate_with_key_per_minute,
+        )
         app.state.engine = engine
         app.state.session_factory = session_factory
         app.state.adapters = build_adapter_map(settings, http)
