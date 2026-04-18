@@ -2370,7 +2370,7 @@ git commit -m "feat(backend): Deezer adapter (resolve + search)"
 - Create: `backend/src/linkhop/matching.py`
 - Create: `backend/tests/test_matching.py`
 
-- [ ] **Step 11.1: Test schreiben — `tests/test_matching.py`**
+- [x] **Step 11.1: Test schreiben — `tests/test_matching.py`**
 
 ```python
 from linkhop.matching import (
@@ -2411,6 +2411,11 @@ def test_artist_overlap_none():
     assert artist_overlap(("Kavinsky",), ("Other",)) == 0.0
 
 
+def test_artist_overlap_empty_returns_zero():
+    assert artist_overlap((), ("Kavinsky",)) == 0.0
+    assert artist_overlap(("Kavinsky",), ()) == 0.0
+
+
 def test_duration_score_exact():
     assert duration_score(257000, 257000) == 1.0
 
@@ -2421,6 +2426,12 @@ def test_duration_score_off_by_5s():
 
 def test_duration_score_off_by_30s():
     assert duration_score(257000, 227000) == 0.0
+
+
+def test_duration_score_none_returns_neutral():
+    assert duration_score(None, 257000) == 0.5
+    assert duration_score(257000, None) == 0.5
+    assert duration_score(None, None) == 0.5
 
 
 def test_score_candidate_perfect_metadata():
@@ -2441,15 +2452,67 @@ def test_threshold_status():
     assert threshold_status(0.8) == "ok"
     assert threshold_status(0.5) == "ok_low"
     assert threshold_status(0.3) == "not_found"
+
+
+def test_threshold_status_boundaries():
+    # exact boundary values belong to the higher bucket
+    assert threshold_status(0.7) == "ok"
+    assert threshold_status(0.4) == "ok_low"
+    assert threshold_status(0.69999) == "ok_low"
+    assert threshold_status(0.39999) == "not_found"
+
+
+def test_artist_overlap_handles_feat_notation():
+    # Deezer often returns a single "A feat. B" name where Spotify returns ("A", "B").
+    # Tokenised overlap must cross that representational gap.
+    assert artist_overlap(("Kavinsky feat. Daft Punk",), ("Kavinsky", "Daft Punk")) == 1.0
+    assert artist_overlap(("Kavinsky ft Daft Punk",), ("Kavinsky",)) > 0.3
+
+
+def test_title_similarity_returns_zero_when_either_side_normalises_to_empty():
+    # Pure-symbol or pure-combining-mark titles normalise to "" and would otherwise
+    # compare equal to another empty-normalising title via SequenceMatcher("", "")==1.0.
+    assert title_similarity("🎵🎶", "Nightcall") == 0.0
+    assert title_similarity("🎵🎶", "🎵🎶") == 0.0
+
+
+def make_album(title, artists, duration_ms=None):
+    return ResolvedContent(
+        service="spotify", type=ContentType.ALBUM, id="x", url="",
+        title=title, artists=artists, album=None,
+        duration_ms=duration_ms, isrc=None, upc=None, artwork="",
+    )
+
+
+def make_artist(name):
+    return ResolvedContent(
+        service="spotify", type=ContentType.ARTIST, id="x", url="",
+        title=name, artists=(name,), album=None,
+        duration_ms=None, isrc=None, upc=None, artwork="",
+    )
+
+
+def test_score_candidate_album_perfect_match_reaches_one():
+    # Albums carry no duration on either side; weights must re-distribute so
+    # a perfect match scores 1.0 rather than the 0.9 cap of the track formula.
+    src = make_album("OutRun", ("Kavinsky",))
+    cand = make_album("OutRun", ("Kavinsky",))
+    assert score_candidate(src, cand, match="metadata") == 1.0
+
+
+def test_score_candidate_artist_perfect_match_reaches_one():
+    src = make_artist("Kavinsky")
+    cand = make_artist("Kavinsky")
+    assert score_candidate(src, cand, match="metadata") == 1.0
 ```
 
-- [ ] **Step 11.2: Test laufen — FAIL**
+- [x] **Step 11.2: Test laufen — FAIL**
 
 ```bash
 cd backend && pytest tests/test_matching.py -v
 ```
 
-- [ ] **Step 11.3: `src/linkhop/matching.py` schreiben**
+- [x] **Step 11.3: `src/linkhop/matching.py` schreiben**
 
 ```python
 from __future__ import annotations
@@ -2457,53 +2520,85 @@ from __future__ import annotations
 import re
 import unicodedata
 from difflib import SequenceMatcher
+from typing import Literal
 
-from linkhop.models.domain import ResolvedContent
+from linkhop.models.domain import MatchType, ResolvedContent
+
+ThresholdStatus = Literal["ok", "ok_low", "not_found"]
+
+_PUNCT_RE = re.compile(r"[^\w\s]", flags=re.UNICODE)
+_WS_RE = re.compile(r"\s+")
+
+# Connector tokens that join collaborating artists into one string on some services
+# (Deezer tends to return "A feat. B" as a single artist name, Spotify splits them).
+# Stripping these makes the two shapes comparable.
+_ARTIST_STOPWORDS = frozenset({"feat", "ft", "featuring", "with", "and"})
 
 
 def _normalize(s: str) -> str:
     s = unicodedata.normalize("NFKD", s)
     s = "".join(c for c in s if not unicodedata.combining(c))
-    s = re.sub(r"[^\w\s]", " ", s, flags=re.UNICODE)
-    s = re.sub(r"\s+", " ", s).strip().lower()
+    s = _PUNCT_RE.sub(" ", s)
+    s = _WS_RE.sub(" ", s).strip().lower()
     return s
 
 
+def _artist_tokens(names: tuple[str, ...]) -> set[str]:
+    out: set[str] = set()
+    for name in names:
+        for tok in _normalize(name).split():
+            if tok and tok not in _ARTIST_STOPWORDS:
+                out.add(tok)
+    return out
+
+
 def title_similarity(a: str, b: str) -> float:
-    return SequenceMatcher(None, _normalize(a), _normalize(b)).ratio()
+    na = _normalize(a)
+    nb = _normalize(b)
+    if not na or not nb:
+        return 0.0
+    return SequenceMatcher(None, na, nb).ratio()
 
 
 def artist_overlap(a: tuple[str, ...], b: tuple[str, ...]) -> float:
-    sa = {_normalize(x) for x in a}
-    sb = {_normalize(x) for x in b}
-    if not sa or not sb:
+    ta = _artist_tokens(a)
+    tb = _artist_tokens(b)
+    if not ta or not tb:
         return 0.0
-    inter = sa & sb
-    union = sa | sb
+    inter = ta & tb
+    union = ta | tb
     return len(inter) / len(union)
 
 
 def duration_score(a_ms: int | None, b_ms: int | None) -> float:
     if a_ms is None or b_ms is None:
-        return 0.5  # neutral
+        return 0.5  # neutral when either side lacks a duration
     diff_s = abs(a_ms - b_ms) / 1000
     return max(0.0, 1.0 - diff_s / 10.0)
 
 
-def score_candidate(source: ResolvedContent, candidate: ResolvedContent, match: str) -> float:
+def score_candidate(
+    source: ResolvedContent, candidate: ResolvedContent, match: MatchType
+) -> float:
     if match in {"isrc", "upc"}:
         return 1.0
     title = title_similarity(source.title, candidate.title)
     artists = artist_overlap(source.artists, candidate.artists)
-    dur = duration_score(source.duration_ms, candidate.duration_ms) if candidate.duration_ms else 0.5
+    # Album and artist content have no duration on either side; duration_score would
+    # contribute a constant 0.5, capping a perfect match at 0.9. Re-distribute its
+    # weight across title and artists when duration is unavailable on either side.
+    if source.duration_ms is None or candidate.duration_ms is None:
+        return round(title * 0.5 + artists * 0.5, 3)
+    dur = duration_score(source.duration_ms, candidate.duration_ms)
     return round(title * 0.4 + artists * 0.4 + dur * 0.2, 3)
 
 
-def threshold_status(confidence: float) -> str:
-    """Return canonical status label:
-    - 'ok' for confidence >= 0.7
-    - 'ok_low' for 0.4 <= confidence < 0.7 (UI shows ~match badge)
-    - 'not_found' for < 0.4
+def threshold_status(confidence: float) -> ThresholdStatus:
+    """Bucket a confidence score into a canonical status label.
+
+    - 'ok' for confidence >= 0.7 (auto-accept).
+    - 'ok_low' for 0.4 <= confidence < 0.7 (UI shows a "~match" badge).
+    - 'not_found' for < 0.4 (no candidate surfaced).
     """
     if confidence >= 0.7:
         return "ok"
@@ -2512,15 +2607,15 @@ def threshold_status(confidence: float) -> str:
     return "not_found"
 ```
 
-- [ ] **Step 11.4: Tests ausführen**
+- [x] **Step 11.4: Tests ausführen**
 
 ```bash
 cd backend && pytest tests/test_matching.py -v
 ```
 
-Expected: `11 passed`.
+Expected: `19 passed`.
 
-- [ ] **Step 11.5: Commit**
+- [x] **Step 11.5: Commit**
 
 ```bash
 git add backend/
