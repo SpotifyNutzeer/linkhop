@@ -3,17 +3,11 @@ from __future__ import annotations
 import asyncio
 
 import click
-from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from linkhop.api_keys import ApiKeyService
 from linkhop.config import Settings
 from linkhop.models.db import Base
-
-
-def _sync_url(url: str) -> str:
-    # CLI init uses sync driver for CREATE TABLE (simpler)
-    return url.replace("+asyncpg", "").replace("+aiosqlite", "")
 
 
 @click.group()
@@ -23,9 +17,19 @@ def cli() -> None:
 
 @cli.command("init-db")
 def init_db() -> None:
-    settings = Settings()
-    engine = create_engine(_sync_url(settings.database_url))
-    Base.metadata.create_all(engine)
+    # Async-Pfad via run_sync(create_all), damit wir keinen zusätzlichen
+    # Sync-Treiber (psycopg2) als Dependency brauchen — die DSN ist bereits
+    # in asyncpg/aiosqlite-Form, und Base.metadata.create_all akzeptiert die
+    # Sync-API auf einer Sync-Connection, die run_sync liefert.
+    async def _run() -> None:
+        settings = Settings()
+        engine = create_async_engine(settings.database_url)
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+        finally:
+            await engine.dispose()
+    asyncio.run(_run())
     click.echo("schema created")
 
 
