@@ -1,17 +1,42 @@
-from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Annotated
+
+from pydantic import AliasChoices, Field, field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="LINKHOP_", case_sensitive=False)
+    """Runtime configuration loaded from env vars prefixed with `LINKHOP_`.
 
-    database_url: str = Field(default="postgresql+asyncpg://linkhop:linkhop@localhost:5432/linkhop")
-    redis_url: str = Field(default="redis://localhost:6379/0")
+    Fields that would otherwise produce awkwardly long env var names use an
+    explicit `validation_alias` to pick a shorter operator-friendly name,
+    while still allowing the Python attribute name as a fallback.
+    """
 
-    rate_anonymous_per_minute: int = Field(default=20, alias="LINKHOP_RATE_ANONYMOUS")
-    rate_with_key_per_minute: int = Field(default=300, alias="LINKHOP_RATE_WITH_KEY")
+    model_config = SettingsConfigDict(
+        env_prefix="LINKHOP_",
+        case_sensitive=False,
+        populate_by_name=True,
+    )
 
-    cache_ttl_seconds: int = Field(default=604800, alias="LINKHOP_CACHE_TTL")
+    database_url: str = "postgresql+asyncpg://linkhop:linkhop@localhost:5432/linkhop"
+    redis_url: str = "redis://localhost:6379/0"
+
+    rate_anonymous_per_minute: int = Field(
+        default=20,
+        validation_alias=AliasChoices(
+            "LINKHOP_RATE_ANONYMOUS", "LINKHOP_RATE_ANONYMOUS_PER_MINUTE"
+        ),
+    )
+    rate_with_key_per_minute: int = Field(
+        default=300,
+        validation_alias=AliasChoices(
+            "LINKHOP_RATE_WITH_KEY", "LINKHOP_RATE_WITH_KEY_PER_MINUTE"
+        ),
+    )
+    cache_ttl_seconds: int = Field(
+        default=604800,
+        validation_alias=AliasChoices("LINKHOP_CACHE_TTL", "LINKHOP_CACHE_TTL_SECONDS"),
+    )
 
     enable_spotify: bool = True
     enable_deezer: bool = True
@@ -26,6 +51,15 @@ class Settings(BaseSettings):
 
     ytm_cookie_file: str = ""
 
-    cors_allow_origins: str = "*"
+    cors_allow_origins: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["*"]
+    )
 
     log_level: str = "INFO"
+
+    @field_validator("cors_allow_origins", mode="before")
+    @classmethod
+    def _split_csv(cls, v: object) -> object:
+        if isinstance(v, str):
+            return [s.strip() for s in v.split(",") if s.strip()]
+        return v
