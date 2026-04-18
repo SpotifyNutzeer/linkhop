@@ -33,6 +33,13 @@ def test_parse_valid(url, service, type_, id_):
     "https://open.spotify.com/show/abc",      # Podcast, nicht unterstützt
     "https://www.deezer.com/podcast/123",
     "ftp://tidal.com/track/1",
+    "spotify:track:",                          # empty ID
+    "spotify:track:abc def",                   # whitespace in ID
+    "spotify:track:has/slash",                 # invalid char
+    "https://music.youtube.com/channel/../watch",  # path traversal
+    "https://music.youtube.com/watch?v=bad id",    # whitespace in v
+    "https://music.youtube.com/playlist?list=has/slash",  # invalid list char
+    "http://[invalid",                          # malformed URL (urlparse raises)
 ])
 def test_parse_invalid_raises(url):
     with pytest.raises(UnsupportedUrlError):
