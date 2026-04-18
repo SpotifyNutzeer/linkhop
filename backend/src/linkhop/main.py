@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 
 import httpx
 import redis.asyncio as redis
@@ -15,25 +15,27 @@ from linkhop.errors import install_error_handlers
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # AsyncExitStack so that a failure mid-setup (e.g. make_engine raising on
+    # a misconfigured DATABASE_URL) still closes resources allocated earlier in
+    # the sequence. Plain try/finally wouldn't cover the setup phase itself.
     settings: Settings = app.state.settings
-    http = httpx.AsyncClient(timeout=15)
-    redis_client = redis.from_url(settings.redis_url, decode_responses=True)
-    engine = make_engine(settings)
-    session_factory = make_session_factory(engine)
+    async with AsyncExitStack() as stack:
+        http = httpx.AsyncClient(timeout=15)
+        stack.push_async_callback(http.aclose)
+        redis_client = redis.from_url(settings.redis_url, decode_responses=True)
+        stack.push_async_callback(redis_client.aclose)
+        engine = make_engine(settings)
+        stack.push_async_callback(engine.dispose)
+        session_factory = make_session_factory(engine)
 
-    app.state.http = http
-    app.state.redis = redis_client
-    app.state.cache = Cache(redis_client, default_ttl=settings.cache_ttl_seconds)
-    app.state.engine = engine
-    app.state.session_factory = session_factory
-    app.state.adapters = build_adapter_map(settings, http)
+        app.state.http = http
+        app.state.redis = redis_client
+        app.state.cache = Cache(redis_client, default_ttl=settings.cache_ttl_seconds)
+        app.state.engine = engine
+        app.state.session_factory = session_factory
+        app.state.adapters = build_adapter_map(settings, http)
 
-    try:
         yield
-    finally:
-        await http.aclose()
-        await redis_client.aclose()
-        await engine.dispose()
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
