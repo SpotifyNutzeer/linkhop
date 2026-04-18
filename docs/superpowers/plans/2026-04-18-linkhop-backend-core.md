@@ -3778,7 +3778,7 @@ Running Tally: **89 findings / 47 rejected über 16 Tasks**.
 - Modify: `backend/src/linkhop/main.py`
 - Create: `backend/tests/test_deps.py`
 
-- [ ] **Step 17.1: `src/linkhop/adapters/__init__.py` ergänzen**
+- [x] **Step 17.1: `src/linkhop/adapters/__init__.py` ergänzen**
 
 ```python
 from __future__ import annotations
@@ -3790,7 +3790,7 @@ from linkhop.adapters.spotify import SpotifyAdapter
 __all__ = ["AdapterCapabilities", "ServiceAdapter", "SpotifyAdapter", "DeezerAdapter"]
 ```
 
-- [ ] **Step 17.2: Test — `tests/test_deps.py`**
+- [x] **Step 17.2: Test — `tests/test_deps.py`**
 
 ```python
 import httpx
@@ -3817,7 +3817,7 @@ async def test_all_enabled_by_default():
         assert "deezer" in m
 ```
 
-- [ ] **Step 17.3: `src/linkhop/deps.py` schreiben**
+- [x] **Step 17.3: `src/linkhop/deps.py` schreiben**
 
 ```python
 from __future__ import annotations
@@ -3842,7 +3842,7 @@ def build_adapter_map(settings: Settings, http: httpx.AsyncClient) -> dict[str, 
     return adapters
 ```
 
-- [ ] **Step 17.4: `src/linkhop/main.py` erweitern**
+- [x] **Step 17.4: `src/linkhop/main.py` erweitern**
 
 ```python
 from __future__ import annotations
@@ -3852,7 +3852,6 @@ from contextlib import asynccontextmanager
 import httpx
 import redis.asyncio as redis
 from fastapi import FastAPI
-from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from linkhop.cache import Cache
 from linkhop.config import Settings
@@ -3899,7 +3898,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 app = create_app()
 ```
 
-- [ ] **Step 17.5: Tests ausführen**
+- [x] **Step 17.5: Tests ausführen**
 
 ```bash
 cd backend && pytest tests/test_deps.py tests/test_smoke.py -v
@@ -3907,12 +3906,42 @@ cd backend && pytest tests/test_deps.py tests/test_smoke.py -v
 
 Expected: beide grün.
 
-- [ ] **Step 17.6: Commit**
+- [x] **Step 17.6: Commit**
 
 ```bash
 git add backend/
 git commit -m "feat(backend): adapter registry, app lifespan wiring"
 ```
+
+**Post-Implementation-Bilanz (Task 17):**
+
+Pre-Dispatch-Plan-Patches: Nur kleiner Fix — unused `async_sessionmaker`-Import
+aus `main.py`-Snippet entfernt (Ruff F401 nach Implementation gefunden).
+
+Feat-Commit (`039f91b`): 2 deps-Tests, 136 passed.
+
+Quality-Review: **9 findings, 4 akzeptiert, 5 rejected**.
+
+Akzeptiert (Refactor-Commit `c706ade`):
+- **C1** — `AsyncExitStack` in `lifespan`: Partial-Setup-Failures schliessen
+  jetzt früher allokierte Resources (kein FD-Leak wenn `make_engine` wirft).
+- **M1** — `build_adapter_map` skipt Spotify wenn Creds leer: Fail-Fast am
+  Boot statt 400s bei jedem Request auf fehlkonfiguriertem Deploy.
+- **M3** — `tests/test_deps.py`: `isinstance`-Assertions gegen Key/Value-Swap.
+- **M4** — Neuer Test `test_both_flags_off_returns_empty` fängt Default-True-
+  Regression bei `enable_*`-Flags. Zusätzlich `test_spotify_skipped_when_
+  credentials_missing` für M1.
+
+Rejected:
+- M2 (granular httpx-Timeout) → Tuning ohne Messdaten, MVP-akzeptabel.
+- m1 (typed AppState) → Scope-Creep; FastAPI-State ist by-design stringly-typed.
+- m2 (`AdapterError` re-export) → Import via `adapters.base` funktioniert.
+- m3 (sync `build_adapter_map`) → YAGNI, kein aktueller Await-Bedarf.
+- m4 (lifespan_override seam) → Future-Task-Design, keine aktuelle Notwendigkeit.
+
+138 passed (136 + 2 neue Tests durch M1/M3/M4).
+
+Running Tally: **98 findings / 52 rejected über 17 Tasks**.
 
 ---
 
