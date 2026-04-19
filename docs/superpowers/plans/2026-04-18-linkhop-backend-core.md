@@ -5141,7 +5141,7 @@ same-container / localhost-Sidecar). Operator im echten Deployment
 override per ENV/Deployment, wenn der Proxy in einem anderen CIDR läuft —
 `*` als Default wäre ein Spoof-Vektor für Rate-Limit-Evasion.
 
-- [ ] **Step 25.1: `backend/Dockerfile`**
+- [x] **Step 25.1: `backend/Dockerfile`**
 
 ```dockerfile
 FROM python:3.12-slim AS build
@@ -5168,7 +5168,7 @@ CMD ["uvicorn", "linkhop.main:app", "--host", "0.0.0.0", "--port", "8080", \
      "--proxy-headers", "--forwarded-allow-ips=127.0.0.1"]
 ```
 
-- [ ] **Step 25.2: `backend/README.md` schreiben**
+- [x] **Step 25.2: `backend/README.md` schreiben**
 
 ```markdown
 # linkhop-backend
@@ -5199,7 +5199,7 @@ pytest -v
 ```
 ```
 
-- [ ] **Step 25.3: `backend/docker-compose.yml`**
+- [x] **Step 25.3: `backend/docker-compose.yml`**
 
 ```yaml
 services:
@@ -5216,7 +5216,7 @@ services:
     ports: ["6379:6379"]
 ```
 
-- [ ] **Step 25.4: Build smoke-testen**
+- [x] **Step 25.4: Build smoke-testen**
 
 ```bash
 cd backend && docker build -t linkhop-backend:local .
@@ -5224,12 +5224,43 @@ cd backend && docker build -t linkhop-backend:local .
 
 Expected: Build erfolgreich, Image ~120 MB.
 
-- [ ] **Step 25.5: Commit**
+- [x] **Step 25.5: Commit**
 
 ```bash
 git add backend/
 git commit -m "feat(backend): Dockerfile + docker-compose for local dev"
 ```
+
+**Post-Impl-Bilanz (2026-04-19):**
+- Implementer: Dockerfile + docker-compose.yml + README.md verbatim aus
+  aktuellem (post-pre-dispatch-patch) Plan. Docker-Build smoke-getestet,
+  ~18s, Image 71 MB (content) bzw. 317 MB (mit shared base layers).
+- Reviews: Spec PASS (2 Q-Findings im Scope: `scripts/dev.sh` im File-List
+  ohne Step-Snippet, README breiter als Snippet im gewährten
+  "reflect-the-intent"-Spielraum). Quality PASS-WITH-NITS, 14 Findings.
+- Accept (9): **M1** `PYTHONUNBUFFERED=1` + `PYTHONDONTWRITEBYTECODE=1` —
+  JSON-Logs gingen sonst bei Crash in stdout-Buffern verloren. **M2**
+  `HEALTHCHECK` gegen `/api/v1/health` (nicht `/health` wie vom Reviewer
+  vermutet). **M3** `LINKHOP_FORWARDED_ALLOW_IPS`-ENV, sh -c wegen
+  env-Expansion + `exec uvicorn` für Signal-Forwarding — direktes Intent
+  der Task-22-C1/M12-Defer. **M4** README-Config-Tabelle mit allen echten
+  `LINKHOP_*`-Env-Vars (gegen `config.py` geprüft). **M5** `pgdata`-Named-
+  Volume — `compose down` löschte sonst Dev-DB + API-Keys. **M6**
+  `pg_isready` + `redis-cli ping` Healthchecks gegen Cold-Start-Race.
+  **L4** Loopback-Binding `127.0.0.1:5432:5432` / `:6379:6379` — `linkhop`-
+  Creds sonst an jeden LAN-Nachbarn offen. **Q1** README sagt: `alembic`
+  läuft vom Host-venv, nicht im Container. **Q2** README sagt: compose ist
+  DB-only, App läuft auf dem Host (Live-Reload-Dev).
+- Reject (5): **L1** Digest-Pin statt Tag (over-spec für V1). **L2**
+  `/wheels` cleanup (micro-opt, paar MB). **L3** Glob-Safety (Paranoia
+  gegen unmöglichen hatchling-build-Zustand). **L5** Creds-Indirection
+  via `.env.example` (over-engineered V1-Dev). **L6** `STOPSIGNAL SIGINT`
+  (uvicorn 0.44 handled SIGTERM, reine Kosmetik).
+- Zusätzlicher Implementer-Fix: OpenAPI-Docs-Pfad im README von `/docs` auf
+  `/api/docs` korrigiert (main.py:57 setzt `docs_url="/api/docs"`).
+- Gesamt-Ergebnis: 157/157 Tests bleiben grün (kein App-Code geändert).
+  Task 25 lokal: 5/14 rejected, 9/14 accepted. Kumulativ seit Task 22:
+  102/189 rejected.
 
 ---
 
