@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import { ApiError, type ApiErrorCode } from '$lib/api/types';
+  import { createCopyFeedback } from '$lib/stores/copyFeedback';
 
   export let error: ApiError;
 
@@ -13,18 +14,8 @@
     offline: 'Keine Verbindung zum Server.'
   };
 
-  let copied = false;
-  let copyFailed = false;
-  let copyTimer: ReturnType<typeof setTimeout> | null = null;
-
-  function scheduleReset() {
-    if (copyTimer) clearTimeout(copyTimer);
-    copyTimer = setTimeout(() => {
-      copied = false;
-      copyFailed = false;
-      copyTimer = null;
-    }, 1500);
-  }
+  const feedback = createCopyFeedback();
+  const { copied, copyFailed } = feedback;
 
   async function copyDebug() {
     const ts = new Date().toISOString();
@@ -32,21 +23,10 @@
       `${error.code}: ${error.message}\n` +
       `URL: ${error.sourceUrl ?? '-'}\n` +
       `Zeit: ${ts}`;
-    try {
-      await navigator.clipboard.writeText(text);
-      copied = true;
-      copyFailed = false;
-      scheduleReset();
-    } catch {
-      copyFailed = true;
-      copied = false;
-      scheduleReset();
-    }
+    await feedback.copy(text);
   }
 
-  onDestroy(() => {
-    if (copyTimer) clearTimeout(copyTimer);
-  });
+  onDestroy(() => feedback.destroy());
 </script>
 
 <section class="panel" role="alert">
@@ -55,9 +35,9 @@
     <p class="detail">{error.message}</p>
   {/if}
   <button type="button" class="debug" on:click={copyDebug}>
-    {#if copyFailed}
+    {#if $copyFailed}
       Kopieren fehlgeschlagen
-    {:else if copied}
+    {:else if $copied}
       Kopiert ✓
     {:else}
       Debug-Info kopieren
