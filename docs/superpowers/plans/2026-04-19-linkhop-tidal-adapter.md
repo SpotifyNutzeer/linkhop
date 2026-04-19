@@ -304,6 +304,9 @@ Drei JSON-Fixtures mit der verifizierten Tidal-Response-Shape (Step 2.0):
 
 - [ ] **Step 2.6: Unit-Tests für `resolve()` — `tests/adapters/test_tidal.py`**
 
+Orientierung am bestehenden `tests/adapters/test_spotify.py`-Pattern (Fidelity-Pflicht):
+`@respx.mock`-Decorator pro Test, `respx.post(URL).respond(json=fix(...))` inline, Token-Mock in jedem Test inline mocken (keine separate Fixture), `async with`-Fixture für Resource-Cleanup.
+
 ```python
 import json
 from pathlib import Path
@@ -313,43 +316,38 @@ import pytest
 import respx
 
 from linkhop.adapters.tidal import TidalAdapter
+from linkhop.models.domain import ContentType, ResolvedContent
 from linkhop.url_parser import ParsedUrl
 
-FIXTURES = Path(__file__).parent.parent / "fixtures"
+FIX = Path(__file__).parent.parent / "fixtures"
 
 
-def _load(name: str) -> dict:
-    return json.loads((FIXTURES / name).read_text())
-
-
-@pytest.fixture
-def adapter():
-    http = httpx.AsyncClient()
-    return TidalAdapter(client=http, client_id="cid", client_secret="csec"), http
+def fix(name: str) -> dict:
+    return json.loads((FIX / name).read_text())
 
 
 @pytest.fixture
-def token_route():
-    with respx.mock(base_url="https://auth.tidal.com") as m:
-        m.post("/v1/oauth2/token").mock(
-            return_value=httpx.Response(200, json={"access_token": "tok", "expires_in": 3600})
-        )
-        yield m
+async def adapter():
+    async with httpx.AsyncClient() as client:
+        yield TidalAdapter(client=client, client_id="cid", client_secret="csec")
 
 
-async def test_resolve_track_returns_isrc_and_metadata(adapter, token_route):
-    ad, _ = adapter
-    with respx.mock(base_url="https://openapi.tidal.com", assert_all_called=False) as api:
-        api.get("/v2/tracks/1").mock(return_value=httpx.Response(200, json=_load("tidal_track.json")))
-        out = await ad.resolve(ParsedUrl("tidal", "track", "1"))
-    assert out is not None
-    assert out.isrc  # muss aus Fixture kommen
-    assert out.title
-    assert out.artists
-    assert out.duration_ms and out.duration_ms > 0
+@respx.mock
+async def test_resolve_track(adapter: TidalAdapter):
+    respx.post("https://auth.tidal.com/v1/oauth2/token").respond(
+        json={"access_token": "tok", "expires_in": 3600}
+    )
+    respx.get("https://openapi.tidal.com/v2/tracks/1").respond(json=fix("tidal_track.json"))
+    result = await adapter.resolve(ParsedUrl("tidal", "track", "1"))
+    assert result is not None
+    assert result.isrc  # Pflicht aus Fixture — ohne ISRC keine Cross-Service-Kette in Task 5
+    assert result.title
+    assert result.artists
+    assert result.duration_ms and result.duration_ms > 0
+    assert result.type == ContentType.TRACK
 ```
 
-Plus analoge Tests für Album und Artist sowie einen 404-Test (`resp.status_code == 404` → `None`-Rückgabe).
+Plus analoge Tests für Album (Pflicht-Feld `upc`), Artist, und ein 404-Test (`respx.get(...).respond(status_code=404)` → `None`-Rückgabe). Konkrete Assertion-Werte (Titel, ISRC-String, Artist-Namen) aus der tatsächlichen Fixture einsetzen — `assert result.isrc == "XXX"` ist informativer als `assert result.isrc`.
 
 - [ ] **Step 2.7: Tests laufen lassen**
 
