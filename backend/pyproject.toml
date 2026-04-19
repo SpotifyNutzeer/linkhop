@@ -45,6 +45,7 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 pythonpath = ["src"]
 testpaths = ["tests"]
+markers = ["integration: real API calls; enable with LINKHOP_LIVE_TESTS=1"]
 
 [tool.ruff]
 line-length = 100
