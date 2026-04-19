@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, fireEvent } from '@testing-library/svelte';
+import { render, fireEvent, waitFor } from '@testing-library/svelte';
 import ServiceItem from './ServiceItem.svelte';
 import type { TargetResult } from '$lib/api/types';
 
@@ -40,12 +40,20 @@ describe('ServiceItem', () => {
     expect(queryByRole('link')).toBeNull();
   });
 
-  it('shows "Fehler" for error status', () => {
+  it('shows "Fehler: <message>" when error status carries a message', () => {
     const result: TargetResult = { status: 'error', message: 'boom' };
     const { getByText } = render(ServiceItem, {
       props: { serviceId: 'deezer', displayName: 'Deezer', result }
     });
-    expect(getByText(/Fehler/)).toBeInTheDocument();
+    expect(getByText('Fehler: boom')).toBeInTheDocument();
+  });
+
+  it('shows bare "Fehler" when error status has no message', () => {
+    const result: TargetResult = { status: 'error' };
+    const { getByText } = render(ServiceItem, {
+      props: { serviceId: 'deezer', displayName: 'Deezer', result }
+    });
+    expect(getByText('Fehler')).toBeInTheDocument();
   });
 
   it('copy button writes url to clipboard', async () => {
@@ -61,5 +69,23 @@ describe('ServiceItem', () => {
     });
     await fireEvent.click(getByRole('button', { name: /link kopieren/i }));
     expect(writeText).toHaveBeenCalledWith('https://spotify/track/42');
+  });
+
+  it('shows failure label when clipboard write rejects', async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error('denied'));
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+      writable: true
+    });
+    const result: TargetResult = { status: 'ok', url: 'https://spotify/track/7' };
+    const { getByRole, findByText } = render(ServiceItem, {
+      props: { serviceId: 'spotify', displayName: 'Spotify', result }
+    });
+    await fireEvent.click(getByRole('button', { name: /link kopieren/i }));
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalled();
+    });
+    expect(await findByText(/fehlgeschlagen/i)).toBeInTheDocument();
   });
 });

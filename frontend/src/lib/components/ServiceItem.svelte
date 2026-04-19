@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import type { TargetResult } from '$lib/api/types';
 
   export let serviceId: string;
@@ -7,23 +8,37 @@
   export let isSource = false;
 
   let copied = false;
+  let copyFailed = false;
   let copyTimer: ReturnType<typeof setTimeout> | null = null;
 
+  function scheduleReset() {
+    if (copyTimer) clearTimeout(copyTimer);
+    copyTimer = setTimeout(() => {
+      copied = false;
+      copyFailed = false;
+    }, 1500);
+  }
+
   async function copy() {
-    if (!result.url) return;
+    if (!linkUrl) return;
     try {
-      await navigator.clipboard.writeText(result.url);
+      await navigator.clipboard.writeText(linkUrl);
       copied = true;
-      if (copyTimer) clearTimeout(copyTimer);
-      copyTimer = setTimeout(() => {
-        copied = false;
-      }, 1500);
+      copyFailed = false;
+      scheduleReset();
     } catch {
-      // Clipboard may be unavailable; silently ignore in the UI path.
+      copied = false;
+      copyFailed = true;
+      scheduleReset();
     }
   }
 
-  $: hasLink = (result.status === 'ok' || result.status === 'ok_low') && !!result.url;
+  onDestroy(() => {
+    if (copyTimer) clearTimeout(copyTimer);
+  });
+
+  $: linkUrl =
+    (result.status === 'ok' || result.status === 'ok_low') ? result.url ?? null : null;
 </script>
 
 <div class="row" class:source={isSource} data-service-id={serviceId}>
@@ -38,9 +53,9 @@
   </div>
 
   <div class="body">
-    {#if hasLink && result.url}
-      <a class="link" href={result.url} target="_blank" rel="noopener noreferrer">
-        {result.url}
+    {#if linkUrl}
+      <a class="link" href={linkUrl} target="_blank" rel="noopener noreferrer">
+        {linkUrl}
       </a>
       <button
         type="button"
@@ -48,7 +63,13 @@
         aria-label="Link kopieren"
         on:click={copy}
       >
-        {copied ? '✓' : 'Kopieren'}
+        {#if copyFailed}
+          Kopieren fehlgeschlagen
+        {:else if copied}
+          ✓
+        {:else}
+          Kopieren
+        {/if}
       </button>
     {:else if result.status === 'not_found'}
       <span class="muted">nicht gefunden</span>

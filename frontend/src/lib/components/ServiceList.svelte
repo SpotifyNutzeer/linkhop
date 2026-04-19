@@ -11,7 +11,7 @@
     return $services[id]?.name ?? id;
   }
 
-  $: sourceResult = { status: 'ok', url: sourceUrl } as TargetResult;
+  $: sourceResult = { status: 'ok', url: sourceUrl } satisfies TargetResult;
   $: targetEntries = Object.entries(targets).filter(([id]) => id !== sourceService);
 </script>
 
