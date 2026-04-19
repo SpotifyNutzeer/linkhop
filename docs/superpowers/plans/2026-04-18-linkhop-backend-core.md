@@ -5135,8 +5135,11 @@ muss `--proxy-headers` und `--forwarded-allow-ips=<trusted-cidr>` setzen,
 sonst sieht `request.client.host` in `enforce_rate_limit` nur die Proxy-IP
 → alle anonymen Requests landen in einem Bucket, und `request.url.scheme`
 bleibt `http` obwohl der Proxy TLS terminiert (→ Share-URLs mit `http://`).
-Das CMD unten enthält die Flags nicht — beim Durchziehen von Task 25 bitte
-ergänzen oder eine bewusste Entscheidung dagegen in diese Sektion schreiben.
+Das CMD unten hat die Flags jetzt eingebaut, mit
+`--forwarded-allow-ips=127.0.0.1` als sicher-by-default (trust nur
+same-container / localhost-Sidecar). Operator im echten Deployment
+override per ENV/Deployment, wenn der Proxy in einem anderen CIDR läuft —
+`*` als Default wäre ein Spoof-Vektor für Rate-Limit-Evasion.
 
 - [ ] **Step 25.1: `backend/Dockerfile`**
 
@@ -5152,14 +5155,17 @@ FROM python:3.12-slim
 RUN useradd -u 10001 -m linkhop
 WORKDIR /app
 COPY --from=build /wheels /wheels
-RUN pip install --no-cache-dir /wheels/*.whl \
-        "uvicorn[standard]==0.32.*" \
-        asyncpg==0.29.*
+# Wheel bringt uvicorn[standard] und asyncpg per pyproject.toml-Pins (0.44.*/0.31.*)
+# transitiv mit — extra Pins hier wären entweder redundant oder würden pip
+# in einen Resolve-Konflikt zwingen, sobald pyproject-Pin und Dockerfile-Pin
+# auseinanderdriften (was historisch schon passiert ist).
+RUN pip install --no-cache-dir /wheels/*.whl
 COPY alembic.ini ./alembic.ini
 COPY alembic ./alembic
 USER linkhop
 EXPOSE 8080
-CMD ["uvicorn", "linkhop.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "linkhop.main:app", "--host", "0.0.0.0", "--port", "8080", \
+     "--proxy-headers", "--forwarded-allow-ips=127.0.0.1"]
 ```
 
 - [ ] **Step 25.2: `backend/README.md` schreiben**
