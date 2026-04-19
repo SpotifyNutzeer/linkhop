@@ -132,8 +132,12 @@ jobs:
           fi
 
       - name: Start frontend dev server
+        # --host 127.0.0.1 aus demselben Grund wie bei uvicorn: Vite bindet per
+        # Default auf "localhost", was auf GitHub-Runnern gern als ::1 auflöst.
+        # wait-on unten fragt 127.0.0.1 (IPv4) — ohne expliziten IPv4-Host
+        # rennt das in den 60s-Timeout.
         run: |
-          nohup pnpm dev > vite.log 2>&1 < /dev/null &
+          nohup pnpm dev --host 127.0.0.1 > vite.log 2>&1 < /dev/null &
           disown
 
       - name: Wait for frontend
