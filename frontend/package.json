@@ -8,6 +8,7 @@
   },
   "packageManager": "pnpm@10.33.0",
   "scripts": {
+    "prepare": "svelte-kit sync",
     "gen:api": "openapi-typescript ../backend/openapi.json -o src/lib/api/schema.d.ts",
     "dev": "vite dev",
     "build": "vite build",
