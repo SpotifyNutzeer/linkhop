@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import logging
 import time
 from typing import Any
 
@@ -9,6 +10,8 @@ import httpx
 from linkhop.adapters.base import AdapterCapabilities, AdapterError
 from linkhop.models.domain import ContentType, MatchType, ResolvedContent, SearchHit
 from linkhop.url_parser import ParsedUrl
+
+logger = logging.getLogger(__name__)
 
 
 def _strip_quotes(s: str) -> str:
@@ -47,6 +50,18 @@ class SpotifyAdapter:
         self._token_exp = time.monotonic() + int(body.get("expires_in", 3600))
         return token
 
+    def _bad_status(self, resp: httpx.Response, context: str) -> AdapterError:
+        # Spotify liefert in 4xx meist {"error":{"status":...,"message":"..."}}.
+        # Body ins Server-Log, aber NICHT in die AdapterError (Frontend-sichtbar).
+        logger.warning(
+            "spotify %s failed: %d %s",
+            context,
+            resp.status_code,
+            resp.text[:500],
+            extra={"service": "spotify", "status_code": resp.status_code},
+        )
+        return AdapterError("spotify", f"{context}: {resp.status_code}")
+
     async def _get(self, path: str) -> dict[str, Any] | None:
         token = await self._ensure_token()
         resp = await self._http.get(
@@ -58,7 +73,7 @@ class SpotifyAdapter:
             self._token = None
             self._token_exp = 0.0
         if resp.status_code >= 400:
-            raise AdapterError("spotify", f"GET {path}: {resp.status_code}")
+            raise self._bad_status(resp, f"GET {path}")
         return resp.json()
 
     async def resolve(self, parsed: ParsedUrl) -> ResolvedContent | None:
@@ -141,7 +156,7 @@ class SpotifyAdapter:
             params={"q": q, "type": "track", "limit": 3},
         )
         if resp.status_code >= 400:
-            raise AdapterError("spotify", f"search tracks: {resp.status_code}")
+            raise self._bad_status(resp, "search tracks")
         items = resp.json().get("tracks", {}).get("items", [])
         return [
             SearchHit(
@@ -162,7 +177,7 @@ class SpotifyAdapter:
             params={"q": q, "type": "album", "limit": 3},
         )
         if resp.status_code >= 400:
-            raise AdapterError("spotify", f"search albums: {resp.status_code}")
+            raise self._bad_status(resp, "search albums")
         items = resp.json().get("albums", {}).get("items", [])
         return [
             SearchHit(
@@ -182,7 +197,7 @@ class SpotifyAdapter:
             params={"q": q, "type": "artist", "limit": 3},
         )
         if resp.status_code >= 400:
-            raise AdapterError("spotify", f"search artists: {resp.status_code}")
+            raise self._bad_status(resp, "search artists")
         items = resp.json().get("artists", {}).get("items", [])
         return [
             SearchHit(
