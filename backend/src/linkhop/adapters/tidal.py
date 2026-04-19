@@ -1,4 +1,5 @@
 # Tidal OpenAPI v2 — verifiziert am 2026-04-19 gegen tidal-music/tidal-sdk-web
+# @ 0ccc13e9ed9108dcc09c6d515acde3f58eac5767 (HEAD zum Verifizierungs-Zeitpunkt).
 # (generierte OpenAPI-TS-Types, /packages/api/src/allAPI.generated.ts + auth package).
 # - Base:   https://openapi.tidal.com/v2
 # - Token:  POST https://auth.tidal.com/v1/oauth2/token
@@ -173,6 +174,9 @@ def _join_artists(
     for ref in refs:
         key = ("artists", ref["id"])
         inc = included.get(key)
+        # Silent-Drop: fehlt ein Artist im included[] (Tidal liefert partielle
+        # Sideloads bei Rate-Limits / sparse-fieldsets), lieber Teilmenge
+        # zurückgeben als harten Fail — Matching nutzt artists[0] + Title/ISRC.
         if inc is None:
             continue
         name = (inc.get("attributes") or {}).get("name")
