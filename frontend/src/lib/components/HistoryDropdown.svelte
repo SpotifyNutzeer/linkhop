@@ -25,7 +25,6 @@
         role="option"
         aria-label={entry.title}
         aria-selected="false"
-        on:mousedown|preventDefault={() => select(entry.sourceUrl)}
         on:click={() => select(entry.sourceUrl)}
       >
         <span class="title">{entry.title}</span>
@@ -34,7 +33,7 @@
       </button>
     {/each}
     <div class="footer">
-      <button type="button" class="clear" on:mousedown|preventDefault={clearHistory} on:click={clearHistory}>Verlauf leeren</button>
+      <button type="button" class="clear" on:click={clearHistory}>Verlauf leeren</button>
     </div>
   </div>
 {/if}
