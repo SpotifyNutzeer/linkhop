@@ -49,13 +49,16 @@
     }
   }
 
-  function onInputBlur() {
-    // Blur->click race workaround (not a debounce): without the delay, clicking a
-    // HistoryDropdown item blurs the input, hides the dropdown, and the click lands
-    // on nothing. 150ms lets the click fire before the dropdown detaches.
-    setTimeout(() => {
+  function onWrapFocusOut(event: FocusEvent) {
+    // Close the dropdown only when focus leaves the wrap entirely. Moving
+    // focus between the input and a listbox option (or vice versa) stays
+    // inside currentTarget, so the dropdown remains open while the user
+    // navigates with the keyboard or is about to click a history entry.
+    const next = event.relatedTarget as Node | null;
+    const wrap = event.currentTarget as HTMLElement;
+    if (!next || !wrap.contains(next)) {
       dropdownOpen = false;
-    }, 150);
+    }
   }
 
   onMount(() => {
@@ -65,13 +68,12 @@
 </script>
 
 <div class="home">
-  <div class="input-wrap">
+  <div class="input-wrap" on:focusout={onWrapFocusOut}>
     <InputBar
       bind:value={inputValue}
       disabled={loading}
       on:submit={(e) => runConvert(e.detail.url)}
       on:focus={() => (dropdownOpen = true)}
-      on:blur={onInputBlur}
     />
     <HistoryDropdown
       open={dropdownOpen}
@@ -79,6 +81,7 @@
         dropdownOpen = false;
         runConvert(e.detail.url);
       }}
+      on:close={() => (dropdownOpen = false)}
     />
   </div>
 
