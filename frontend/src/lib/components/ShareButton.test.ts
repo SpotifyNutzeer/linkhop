@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, fireEvent, findByText, waitFor } from '@testing-library/svelte';
 import ShareButton from './ShareButton.svelte';
 import * as client from '$lib/api/client';
-import { ApiError } from '$lib/api/types';
+import { ApiError, type ConvertResponse } from '$lib/api/types';
 
 describe('ShareButton', () => {
   beforeEach(() => {
@@ -26,11 +26,19 @@ describe('ShareButton', () => {
     const spy = vi.spyOn(client, 'convert').mockImplementation(async (url, opts) => {
       captured.push({ url, opts });
       return {
-        source: { service: 'spotify' },
+        source: {
+          service: 'spotify',
+          type: 'track',
+          id: '1',
+          url: 'https://spotify.com/track/1',
+          title: 'Song',
+          artists: ['Artist'],
+          artwork: ''
+        },
         targets: {},
         cache: { hit: false, ttl_seconds: 0 },
         share: { id: 'ab3x9k', url: 'https://example.com/c/ab3x9k' }
-      } as Awaited<ReturnType<typeof client.convert>>;
+      } satisfies ConvertResponse;
     });
     const { getByRole, container } = render(ShareButton, {
       props: { sourceUrl: 'https://spotify.com/track/1' }

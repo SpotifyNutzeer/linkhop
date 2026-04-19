@@ -34,7 +34,7 @@
     try {
       const res = await convert(sourceUrl, { share: true, signal: ctrl.signal });
       if (ctrl.signal.aborted) return;
-      const info = (res as { share?: { id: string; url: string } }).share;
+      const info = res.share;
       if (!info?.id) {
         shareError = new ApiError('server_error', 0, 'Antwort ohne Share-ID', sourceUrl);
         state = 'error';
