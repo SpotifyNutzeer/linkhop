@@ -287,6 +287,11 @@ async def test_search_track_by_isrc_returns_isrc_match(adapter: TidalAdapter):
     params = route.calls.last.request.url.params
     assert params["filter[isrc]"] == "FR6V81200001"
     assert params["countryCode"] == "DE"
+    # Wire-Format-Assertion (Regression-Schutz für URL-Encoding): httpx rendert
+    # filter[isrc] zu filter%5Bisrc%5D=... — JSON:API erlaubt das, und offene
+    # Tidal-Akzeptanz-Frage muss Live-Test in Task 5 verifizieren.
+    raw = str(route.calls.last.request.url)
+    assert "filter%5Bisrc%5D=FR6V81200001" in raw
 
 
 @respx.mock
@@ -307,6 +312,8 @@ async def test_search_album_by_upc_returns_upc_match(adapter: TidalAdapter):
     params = route.calls.last.request.url.params
     assert params["filter[barcodeId]"] == "0602537360697"
     assert params["countryCode"] == "DE"
+    raw = str(route.calls.last.request.url)
+    assert "filter%5BbarcodeId%5D=0602537360697" in raw
 
 
 @respx.mock
@@ -390,3 +397,16 @@ async def test_search_metadata_query_path_is_url_encoded(adapter: TidalAdapter):
     hits = await adapter.search(meta, ContentType.TRACK)
     assert hits == []
     assert route.call_count == 1
+
+
+@respx.mock
+async def test_search_raises_on_5xx(adapter: TidalAdapter):
+    # Resolve hat bereits Error-Handling-Tests; Search geht zwar durch denselben
+    # _get, aber die Assertion hier schützt gegen künftige Refactors (z.B. direkter
+    # httpx-Call wie Spotify es macht), die den Error-Pfad still aushebeln könnten.
+    respx.post("https://auth.tidal.com/v1/oauth2/token").respond(
+        json=fix("tidal_token.json")
+    )
+    respx.get("https://openapi.tidal.com/v2/tracks").respond(status_code=503)
+    with pytest.raises(AdapterError):
+        await adapter.search(_META_TRACK_WITH_ISRC, ContentType.TRACK)
