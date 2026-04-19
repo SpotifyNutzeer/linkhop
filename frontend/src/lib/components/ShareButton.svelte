@@ -59,21 +59,24 @@
   {#if state === 'idle'}
     <button type="button" class="primary" on:click={share}>Teilen</button>
   {:else if state === 'loading'}
-    <button type="button" class="primary" disabled>Erzeuge Link …</button>
+    <button type="button" class="primary" disabled>
+      <span class="spinner" aria-hidden="true" />
+      Erzeuge Link …
+    </button>
   {:else if state === 'done'}
     <code class="short">{shortUrl}</code>
-    <button type="button" class="copy" aria-label="Kurzlink kopieren" on:click={copy}>
+    <button type="button" class="ghost" aria-label="Kurzlink kopieren" on:click={copy}>
       {#if $copyFailed}
-        Kopieren fehlgeschlagen
+        Fehlgeschlagen
       {:else if $copied}
-        ✓
+        Kopiert
       {:else}
         Kopieren
       {/if}
     </button>
   {:else if state === 'error'}
     <span class="error">Fehler beim Erzeugen des Links</span>
-    <button type="button" class="retry" on:click={share}>Nochmal</button>
+    <button type="button" class="ghost" on:click={share}>Nochmal</button>
   {/if}
 </div>
 
@@ -83,53 +86,74 @@
     gap: 0.5rem;
     align-items: center;
     flex-wrap: wrap;
-    margin-top: 0.75rem;
+    margin-top: 1rem;
   }
   .primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
     background: var(--accent);
-    color: var(--bg);
+    color: var(--accent-contrast);
     border: none;
-    border-radius: 4px;
-    padding: 0.35rem 0.8rem;
-    cursor: pointer;
+    border-radius: var(--r-pill);
+    padding: 0.55rem 1.2rem;
+    font: inherit;
+    font-weight: 600;
     font-size: 0.9rem;
+    cursor: pointer;
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.35) inset,
+      0 -1px 0 0 rgba(0, 0, 0, 0.18) inset,
+      0 8px 20px -10px rgba(0, 0, 0, 0.45);
+    transition: transform var(--dur-fast) var(--ease-spring),
+                filter var(--dur-fast) var(--ease-out);
   }
-  .primary:disabled {
-    opacity: 0.6;
-    cursor: default;
+  .primary:not(:disabled):hover { filter: brightness(1.06); transform: translateY(-1px); }
+  .primary:not(:disabled):active { transform: translateY(0); filter: brightness(0.95); }
+  .primary:disabled { opacity: 0.7; cursor: default; }
+  .spinner {
+    width: 0.85em;
+    height: 0.85em;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    animation: spin 0.8s linear infinite;
   }
-  .primary:not(:disabled):hover {
-    filter: brightness(1.1);
-  }
+  @keyframes spin { to { transform: rotate(360deg); } }
   .short {
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 0.2rem 0.5rem;
-    font-size: 0.85rem;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
     color: var(--text);
+    background: var(--glass-bg-strong);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--r-pill);
+    padding: 0.35rem 0.9rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     max-width: 100%;
+    backdrop-filter: blur(14px) saturate(170%);
+    -webkit-backdrop-filter: blur(14px) saturate(170%);
   }
-  .copy,
-  .retry {
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: 4px;
+  .ghost {
+    background: var(--glass-bg-strong);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--r-pill);
     color: var(--text);
-    padding: 0.2rem 0.6rem;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 500;
+    padding: 0.35rem 0.85rem;
     cursor: pointer;
-    font-size: 0.85rem;
+    transition: all var(--dur-fast) var(--ease-out);
   }
-  .copy:hover,
-  .retry:hover {
-    border-color: var(--accent);
+  .ghost:hover {
     color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 60%, transparent);
   }
-  .error {
-    color: var(--error);
-    font-size: 0.9rem;
+  .error { color: var(--error); font-size: 0.88rem; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .spinner { animation-duration: 1.8s; }
   }
 </style>

@@ -71,7 +71,7 @@
     tabindex="-1"
     on:keydown={handleKey}
   >
-    <div class="hint">Zuletzt:</div>
+    <div class="hint">Zuletzt</div>
     {#each $history as entry, i (entry.sourceUrl)}
       <button
         bind:this={itemButtons[i]}
@@ -96,34 +96,100 @@
 
 <style>
   .dropdown {
-    border: 1px solid var(--border);
-    border-top: none;
-    border-radius: 0 0 6px 6px;
-    background: var(--bg-surface);
-    padding: 0.5rem;
-    max-height: 16rem;
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 0;
+    right: 0;
+    z-index: 20;
+    padding: 0.4rem;
+    background: var(--glass-bg-strong);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--r-md);
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    box-shadow: var(--glass-shadow);
+    max-height: 18rem;
     overflow-y: auto;
+    animation: drop-in var(--dur) var(--ease-spring);
   }
-  .hint { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+  @keyframes drop-in {
+    from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .hint {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    padding: 0.35rem 0.6rem 0.25rem;
+  }
   .item {
     display: flex;
     gap: 0.5rem;
+    width: 100%;
+    align-items: baseline;
+    text-align: left;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid transparent;
+    border-radius: var(--r-sm);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    font: inherit;
+    transition: background var(--dur-fast) var(--ease-out),
+                border-color var(--dur-fast) var(--ease-out);
+  }
+  .item:hover,
+  .item[aria-selected='true'] {
+    background: var(--accent-soft);
+    border-color: var(--glass-border);
+  }
+  .item:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+  .title {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 14rem;
+  }
+  .artists {
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+  }
+  .url {
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+  .footer {
+    margin-top: 0.25rem;
+    padding-top: 0.35rem;
+    border-top: 1px solid var(--glass-border);
+    text-align: right;
+  }
+  .clear {
     background: transparent;
     border: none;
-    color: var(--text);
-    padding: 0.4rem 0.5rem;
-    width: 100%;
-    text-align: left;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 0.78rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--r-xs);
     cursor: pointer;
-    border-radius: 4px;
-    align-items: baseline;
+    transition: color var(--dur-fast) var(--ease-out);
   }
-  .item:hover { background: var(--bg); }
-  .item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-  .title { font-weight: 600; }
-  .artists { color: var(--text-muted); }
-  .url { color: var(--text-muted); font-size: 0.8rem; margin-left: auto; }
-  .footer { border-top: 1px solid var(--border); padding-top: 0.25rem; margin-top: 0.25rem; text-align: right; }
-  .clear { background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.8rem; }
   .clear:hover { color: var(--error); }
+
+  @media (max-width: 520px) {
+    .title { max-width: 10rem; }
+    .url { display: none; }
+  }
 </style>

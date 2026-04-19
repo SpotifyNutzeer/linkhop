@@ -24,8 +24,8 @@
 
 <style>
   main {
-    max-width: 960px;
+    max-width: 720px;
     margin: 0 auto;
-    padding: 1.5rem;
+    padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 4vw, 2rem) 4rem;
   }
 </style>
