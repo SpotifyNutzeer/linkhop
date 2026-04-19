@@ -5009,7 +5009,7 @@ git commit -m "feat(backend): linkhop-admin CLI for init-db and api-keys"
 - Modify: `backend/src/linkhop/main.py`
 - Create: `backend/tests/test_logging.py`
 
-- [ ] **Step 24.1: Test — `tests/test_logging.py`**
+- [x] **Step 24.1: Test — `tests/test_logging.py`**
 
 ```python
 import json
@@ -5036,7 +5036,7 @@ def test_configure_logging_runs():
     logging.getLogger("linkhop.test").info("check")
 ```
 
-- [ ] **Step 24.2: `src/linkhop/logging.py` schreiben**
+- [x] **Step 24.2: `src/linkhop/logging.py` schreiben**
 
 ```python
 from __future__ import annotations
@@ -5073,7 +5073,7 @@ def configure_logging(level: str = "INFO") -> None:
     root.setLevel(level.upper())
 ```
 
-- [ ] **Step 24.3: `main.py` — Logging initialisieren, Access-Middleware hinzufügen**
+- [x] **Step 24.3: `main.py` — Logging initialisieren, Access-Middleware hinzufügen**
 
 In `create_app`:
 
@@ -5088,7 +5088,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
 Optional: eine HTTP-Middleware, die Requests mit Status + Dauer loggt. Für V1 überlassen wir das Uvicorn's Access-Log (reicht).
 
-- [ ] **Step 24.4: Tests ausführen**
+- [x] **Step 24.4: Tests ausführen**
 
 ```bash
 cd backend && pytest tests/test_logging.py -v
@@ -5096,12 +5096,30 @@ cd backend && pytest tests/test_logging.py -v
 
 Expected: `2 passed`.
 
-- [ ] **Step 24.5: Commit**
+- [x] **Step 24.5: Commit**
 
 ```bash
 git add backend/
 git commit -m "feat(backend): json-structured logging"
 ```
+
+**Post-Impl-Bilanz (2026-04-19):**
+- Implementer: 2 neue Tests, verbatim aus Spec, 155/155 Suite grün.
+- Reviews: Spec PASS (byte-faithful); Quality PASS-WITH-NITS mit 8 Findings.
+- Accept (2): **M2** `test_configure_logging_runs` ohne Assertions → jetzt asserted Handler-Count, Level, Formatter-Klasse. **M3** Formatter-Test deckte exc_info + extra-attrs (`request_id`, `path`, …) nicht ab → zwei zusätzliche Tests für beide Branches inkl. None-Skip.
+- Reject (6): **C1** `root.handlers.clear()` bei Import (Plan-explizit; akut low-risk → Hazard-Note unten). **M1** Modul-Shadowing `linkhop.logging` (Plan-Name; absolute imports schützen). **M4** CLI bypasst JSON-Logging (CLI ist operator-facing `click.echo`; Plan hat es nicht spezifiziert). **L1** `timezone.utc` vs `UTC` (Plan-Snippet-Treue, Null-Semantik). **L2** `ensure_ascii=False` ist fine (Reviewer selbst). **Q1** Idempotency-Guard (Call läuft effektiv einmal pro App; Guard = Dead-Code).
+- Gesamt-Ergebnis: 157/157 Tests (155 + 4 neue − 2 alte), 167/175 Findings rejected, 2 weiche Accepts als Test-Stärkung umgesetzt.
+
+**Hazard-Note für C1:** `configure_logging()` ruft `root.handlers.clear()`
+auf und läuft transitiv bei jedem `import linkhop.main` (da `app =
+create_app()` am Modulende steht). Heute unproblematisch, weil kein Test
+`caplog` verwendet. **Wenn ein zukünftiger Test `caplog` braucht**, gibt es
+zwei Auswege: (a) `configure_logging` idempotent machen (nur Handler
+installieren, wenn noch keiner da ist), oder (b) den Test so schreiben,
+dass er `configure_logging` vor `caplog`-Nutzung NICHT erneut triggert
+(d.h. `test_configure_logging_installs_single_json_handler_at_level` nicht
+in Kombination mit `caplog` auf Root laufen lassen). Akzeptierte Schuld
+bis ein eigener Task Logging-Hygiene anfasst.
 
 ---
 
