@@ -380,6 +380,31 @@ Expected: alle grün.
 - Create: `backend/tests/fixtures/tidal_search_metadata.json`
 - Modify: `backend/tests/adapters/test_tidal.py`
 
+- [ ] **Step 3.0: Tidal-Search-API-Recherche (Pflicht vor Code)**
+
+Analog zu Step 2.0 — Step 2.0 hat nur Resolve-Endpoints verifiziert, Search blieb offen. Der Implementer **muss vor dem Schreiben von Code** die Search-Endpoints gegen `tidal-music/tidal-sdk-web` (oder die OpenAPI-Spec) verifizieren, weil die drei bisher als Annahmen gehandelten Pfade sich gegenseitig ausschließen.
+
+Assumptions (zu verifizieren):
+
+| Aspekt | Kandidaten | Verifizieren |
+|---|---|---|
+| ISRC-Lookup | `GET /tracks?filter[isrc]=...&countryCode=DE` ODER `GET /searchResults/{isrc}/relationships/tracks?countryCode=DE` | Welchen Pfad nutzt das tidal-sdk-web? |
+| UPC-Lookup | `GET /albums?filter[barcodeId]=...&countryCode=DE` ODER Search-basiert | Analog |
+| Metadata-Search | `GET /searchResults/{query}/relationships/tracks?countryCode=DE&include=...` ODER `GET /search?query=...&type=track` | Welcher existiert in OpenAPI? |
+| Query-Encoding | Wie URL-encoded der SDK den Query (plain, path-segment, query-param)? | Code lesen |
+| Response-Shape | JSON:API mit `data[]`+`included[]`, analog zu Resolve? Oder `meta.hits[]`-Container? | Response-Type inspizieren |
+| Limit/Paging | `page[limit]=3`, `limit=3`, oder implizit? | OpenAPI-Parameter-Liste |
+
+**Output dieser Step:** Header-Kommentar in `tidal.py` um 3–5 Zeilen Search-Dokumentation erweitern (Endpoint + Response-Pfad). Beispiel:
+
+```python
+# - Search: GET /searchResults/{q}/relationships/tracks?countryCode=DE&include=tracks
+#           → data[].id → tracks, included[] enthält track-Resources mit attributes.isrc
+# - ISRC-Lookup: /tracks mit filter[isrc] (gleiche Shape wie Resolve).
+```
+
+Wenn die Tidal-API keinen direkten ISRC-Filter hat, muss das **als Finding** dokumentiert werden: ISRC-Lookup wird dann per Metadata-Search + ISRC-Abgleich in `included[]` gebaut (confidence=1.0, wenn `included[].attributes.isrc == meta.isrc`). Diese Design-Entscheidung **ist Teil von Step 3.0**, nicht von Step 3.1.
+
 - [ ] **Step 3.1: `search()`-Methode (ISRC/UPC-First, Metadata-Fallback)**
 
 Analog zu `SpotifyAdapter.search()`, aber mit Tidal-OpenAPI-Pfaden aus Step 2.0:
@@ -423,32 +448,46 @@ Reason-Kommentar ist kein Schmuck: im Review wurde in Plan A die identische Frag
 
 - [ ] **Step 3.4: Unit-Tests ergänzen**
 
-In `tests/adapters/test_tidal.py`:
+In `tests/adapters/test_tidal.py` — **gleiches Pattern wie Task 2.6** (Fidelity-Pflicht):
+`@respx.mock`-Decorator pro Test, inline `respx.post/get().respond(json=fix(...))`, single-adapter-Fixture wie schon existent, Token-Mock pro Test inline:
 
 ```python
-async def test_search_by_isrc_returns_confidence_1(adapter, token_route):
-    ad, _ = adapter
-    with respx.mock(base_url="https://openapi.tidal.com") as api:
-        api.get("/v2/tracks").mock(
-            return_value=httpx.Response(200, json=_load("tidal_search_isrc.json"))
-        )
-        meta = ResolvedContent(
-            service="spotify", type=ContentType.TRACK, id="sp1",
-            url="...", title="Nightcall", artists=("Kavinsky",),
-            album=None, duration_ms=257000, isrc="FR6V81200001", upc=None, artwork="",
-        )
-        hits = await ad.search(meta, ContentType.TRACK)
+@respx.mock
+async def test_search_track_by_isrc_returns_isrc_match(adapter: TidalAdapter):
+    respx.post("https://auth.tidal.com/v1/oauth2/token").respond(json=fix("tidal_token.json"))
+    # Konkreter Endpoint + Query-Param aus Step 3.0 — hier Platzhalter, exakt ersetzen:
+    respx.get("https://openapi.tidal.com/v2/tracks").respond(json=fix("tidal_search_isrc.json"))
+    meta = ResolvedContent(
+        service="spotify", type=ContentType.TRACK, id="sp1",
+        url="https://open.spotify.com/track/sp1",
+        title="Nightcall", artists=("Kavinsky",), album=None,
+        duration_ms=257_000, isrc="FR6V81200001", upc=None, artwork="",
+    )
+    hits = await adapter.search(meta, ContentType.TRACK)
     assert len(hits) >= 1
     assert hits[0].match == "isrc"
     assert hits[0].confidence == 1.0
+    assert hits[0].service == "tidal"
 
 
-async def test_search_metadata_when_no_isrc(...):
-    # match == "metadata", confidence == 0.0 (Matcher setzt final)
-    ...
+@respx.mock
+async def test_search_track_metadata_fallback(adapter: TidalAdapter):
+    respx.post("https://auth.tidal.com/v1/oauth2/token").respond(json=fix("tidal_token.json"))
+    respx.get(...).respond(json=fix("tidal_search_metadata.json"))
+    meta = ResolvedContent(
+        service="spotify", type=ContentType.TRACK, id="sp1",
+        url="...", title="Nightcall", artists=("Kavinsky",), album=None,
+        duration_ms=257_000, isrc=None, upc=None, artwork="",  # kein ISRC → Metadata-Pfad
+    )
+    hits = await adapter.search(meta, ContentType.TRACK)
+    assert hits
+    assert hits[0].match == "metadata"
+    assert hits[0].confidence == 0.0  # Matcher setzt final, Adapter liefert 0.0
 ```
 
-Plus: Test, dass `search(meta, ContentType.ALBUM)` mit `meta.upc` den UPC-Pfad trifft.
+Plus: analoger Test für `ContentType.ALBUM` mit `meta.upc` (→ `match == "upc"`, `confidence == 1.0`), und ein Metadata-Test für Artist-Suche.
+
+**Warum `confidence=1.0` bei ISRC trotz "Matcher setzt final"?** — ISRC/UPC sind global eindeutige Identifier; ein Adapter-Hit bedeutet definitionsgemäß denselben Track. Der Matcher nutzt das als Fast-Path ohne weiteres Scoring. Bei Metadata-Hits hat der Adapter keine Confidence-Info → `0.0`, Matcher berechnet aus Title/Artist/Duration.
 
 - [ ] **Step 3.5: Tests laufen lassen**
 
