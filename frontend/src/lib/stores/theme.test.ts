@@ -3,6 +3,7 @@ import { get } from 'svelte/store';
 
 describe('theme store', () => {
   beforeEach(() => {
+    vi.unstubAllGlobals();
     localStorage.clear();
     document.documentElement.removeAttribute('data-theme');
     vi.resetModules();
@@ -35,6 +36,24 @@ describe('theme store', () => {
     }));
     const { setTheme } = await import('./theme');
     setTheme('auto');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+  });
+
+  it('updates data-theme when system preference changes while in auto mode', async () => {
+    let changeCallback: ((e: { matches: boolean }) => void) | null = null;
+    let isDark = false;
+    vi.stubGlobal('matchMedia', (q: string) => ({
+      matches: q.includes('dark') && isDark,
+      media: q,
+      addEventListener: (_: string, cb: (e: { matches: boolean }) => void) => { changeCallback = cb; },
+      removeEventListener: () => {}
+    }));
+    const { setTheme } = await import('./theme');
+    setTheme('auto');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+
+    isDark = true;
+    changeCallback?.({ matches: true });
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
   });
 });

@@ -13,14 +13,27 @@ function readInitial(): Pref {
 
 export const themePref = writable<Pref>(readInitial());
 
-function resolveEffective(pref: Pref): Effective {
-  if (pref === 'dark') return 'dark';
-  if (pref === 'light') return 'light';
-  if (typeof matchMedia === 'undefined') return 'light';
-  return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+function systemPrefersDark(): boolean {
+  if (typeof matchMedia === 'undefined') return false;
+  return matchMedia('(prefers-color-scheme: dark)').matches;
 }
 
-export const effectiveTheme = derived(themePref, ($p) => resolveEffective($p));
+const systemDark = writable<boolean>(systemPrefersDark());
+
+if (typeof matchMedia !== 'undefined') {
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    systemDark.set(e.matches);
+  });
+}
+
+export const effectiveTheme = derived<[typeof themePref, typeof systemDark], Effective>(
+  [themePref, systemDark],
+  ([$p, $sys]) => {
+    if ($p === 'dark') return 'dark';
+    if ($p === 'light') return 'light';
+    return $sys ? 'dark' : 'light';
+  }
+);
 
 effectiveTheme.subscribe((eff) => {
   if (typeof document !== 'undefined') {
@@ -33,14 +46,6 @@ themePref.subscribe((p) => {
     localStorage.setItem(STORAGE_KEY, p);
   }
 });
-
-if (typeof matchMedia !== 'undefined') {
-  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-    if (get(themePref) === 'auto') {
-      themePref.set('auto');
-    }
-  });
-}
 
 export function setTheme(p: Pref): void {
   themePref.set(p);
