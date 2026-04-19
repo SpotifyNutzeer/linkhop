@@ -1,0 +1,30 @@
+{
+  "name": "linkhop-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-static": "^3.0.0",
+    "@sveltejs/kit": "^2.5.0",
+    "@sveltejs/vite-plugin-svelte": "^3.0.0",
+    "@testing-library/jest-dom": "^6.4.0",
+    "@testing-library/svelte": "^5.2.0",
+    "@testing-library/user-event": "^14.5.0",
+    "jsdom": "^24.0.0",
+    "svelte": "^4.2.0",
+    "svelte-check": "^3.6.0",
+    "tslib": "^2.6.0",
+    "typescript": "^5.4.0",
+    "vite": "^5.2.0",
+    "vitest": "^1.6.0"
+  }
+}
