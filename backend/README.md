@@ -80,6 +80,11 @@ Run with coverage:
 pytest --cov=linkhop --cov-report=term-missing -v
 ```
 
-Live integration tests against real Spotify/Deezer APIs are skipped by
-default; enable them with `LINKHOP_LIVE_TESTS=1` and the matching
-`LINKHOP_SPOTIFY_CLIENT_ID` / `LINKHOP_SPOTIFY_CLIENT_SECRET` env vars.
+Live integration tests against real Spotify/Deezer/Tidal APIs are skipped
+by default; enable them with `LINKHOP_LIVE_TESTS=1` and the matching
+credentials:
+
+- `LINKHOP_SPOTIFY_CLIENT_ID` / `LINKHOP_SPOTIFY_CLIENT_SECRET`
+- `LINKHOP_TIDAL_CLIENT_ID` / `LINKHOP_TIDAL_CLIENT_SECRET`
+
+Deezer needs no credentials.
