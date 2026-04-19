@@ -1,0 +1,21 @@
+{
+  "data": [
+    {
+      "id": "77640617",
+      "type": "tracks",
+      "attributes": {
+        "title": "Nightcall",
+        "isrc": "FR6V81200001",
+        "duration": "PT4M17S",
+        "explicit": false,
+        "popularity": 0.56,
+        "mediaTags": []
+      },
+      "relationships": {
+        "artists": { "data": [{ "type": "artists", "id": "3528266" }] },
+        "albums":  { "data": [{ "type": "albums",  "id": "17927863" }] }
+      }
+    }
+  ],
+  "links": { "self": "/tracks?filter%5Bisrc%5D=FR6V81200001" }
+}

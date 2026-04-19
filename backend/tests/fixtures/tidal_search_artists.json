@@ -1,0 +1,19 @@
+{
+  "data": [
+    { "type": "artists", "id": "3528266" },
+    { "type": "artists", "id": "3528267" }
+  ],
+  "included": [
+    {
+      "id": "3528266",
+      "type": "artists",
+      "attributes": { "name": "Kavinsky", "popularity": 0.7 }
+    },
+    {
+      "id": "3528267",
+      "type": "artists",
+      "attributes": { "name": "Kavinsky Tribute", "popularity": 0.1 }
+    }
+  ],
+  "links": { "self": "/searchResults/Kavinsky/relationships/artists" }
+}

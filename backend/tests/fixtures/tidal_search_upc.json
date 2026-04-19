@@ -1,0 +1,24 @@
+{
+  "data": [
+    {
+      "id": "17927863",
+      "type": "albums",
+      "attributes": {
+        "title": "OutRun",
+        "barcodeId": "0602537360697",
+        "duration": "PT46M17S",
+        "albumType": "ALBUM",
+        "explicit": false,
+        "numberOfItems": 13,
+        "numberOfVolumes": 1,
+        "popularity": 0.6,
+        "releaseDate": "2013-02-25",
+        "mediaTags": []
+      },
+      "relationships": {
+        "artists": { "data": [{ "type": "artists", "id": "3528266" }] }
+      }
+    }
+  ],
+  "links": { "self": "/albums?filter%5BbarcodeId%5D=0602537360697" }
+}

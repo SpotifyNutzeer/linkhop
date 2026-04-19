@@ -1,0 +1,58 @@
+{
+  "data": [
+    { "type": "tracks", "id": "77640617" },
+    { "type": "tracks", "id": "77640618" },
+    { "type": "tracks", "id": "77640619" }
+  ],
+  "included": [
+    {
+      "id": "77640617",
+      "type": "tracks",
+      "attributes": {
+        "title": "Nightcall",
+        "isrc": "FR6V81200001",
+        "duration": "PT4M17S",
+        "explicit": false,
+        "popularity": 0.56,
+        "mediaTags": []
+      },
+      "relationships": {
+        "artists": { "data": [{ "type": "artists", "id": "3528266" }] },
+        "albums":  { "data": [{ "type": "albums",  "id": "17927863" }] }
+      }
+    },
+    {
+      "id": "77640618",
+      "type": "tracks",
+      "attributes": {
+        "title": "Nightcall (Dustin N'Guyen Remix)",
+        "isrc": "FR6V81200099",
+        "duration": "PT5M01S",
+        "explicit": false,
+        "popularity": 0.3,
+        "mediaTags": []
+      },
+      "relationships": {
+        "artists": { "data": [{ "type": "artists", "id": "3528266" }] },
+        "albums":  { "data": [{ "type": "albums",  "id": "17927864" }] }
+      }
+    },
+    {
+      "id": "77640619",
+      "type": "tracks",
+      "attributes": {
+        "title": "Nightcall (Live)",
+        "isrc": "FR6V81400001",
+        "duration": "PT4M30S",
+        "explicit": false,
+        "popularity": 0.2,
+        "mediaTags": []
+      },
+      "relationships": {
+        "artists": { "data": [{ "type": "artists", "id": "3528266" }] },
+        "albums":  { "data": [{ "type": "albums",  "id": "17927865" }] }
+      }
+    }
+  ],
+  "links": { "self": "/searchResults/Kavinsky%20Nightcall/relationships/tracks" }
+}

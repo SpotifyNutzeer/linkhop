@@ -12,6 +12,16 @@
 #           → data.attributes.{title,barcodeId(=UPC),duration}
 #             coverArt → Artworks-Resource (attributes.files[{href,meta.width}])
 # - Artist: GET /artists/{id}?countryCode=DE → data.attributes.name
+# - ISRC-Search:  GET /tracks?filter[isrc]={isrc}&countryCode=DE
+#                 → data[] sind volle Track-Resources (Tracks_Multi_Resource_Data_Document)
+#                 mit attributes.isrc — direkter Filter ist per OpenAPI garantiert.
+# - UPC-Search:   GET /albums?filter[barcodeId]={upc}&countryCode=DE  (analog)
+# - Metadata:     GET /searchResults/{query}/relationships/{tracks|albums|artists}
+#                     ?countryCode=DE&include={tracks|albums|artists}
+#                 {query} ist das URL-encoded Suchwort als Pfad-Segment (Spec:
+#                 "Search query string used as the resource identifier"). data[]
+#                 enthält nur Resource_Identifier; Full-Resources landen in included[].
+#                 Kein page[limit] — API paginiert per cursor; wir slicen client-seitig.
 # VERIFY: countryCode ist per Spec optional — wir senden DE defensiv, weil Availability
 # regional gefiltert wird (ohne countryCode liefert die API zwar 200, aber leere Listen
 # bei regional-nicht-verfügbaren Inhalten).
@@ -20,12 +30,17 @@ from __future__ import annotations
 import re
 import time
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
 from linkhop.adapters.base import AdapterCapabilities, AdapterError
-from linkhop.models.domain import ContentType, ResolvedContent
+from linkhop.models.domain import ContentType, MatchType, ResolvedContent, SearchHit
 from linkhop.url_parser import ParsedUrl
+
+# Obergrenze für Search-Hits — Tidal paginiert cursor-basiert ohne page[limit]-Param;
+# wir schneiden client-seitig auf denselben Wert wie Spotify/Deezer (limit=3).
+_SEARCH_LIMIT = 3
 
 _DURATION_RE = re.compile(r"^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?$")
 
@@ -162,6 +177,120 @@ class TidalAdapter:
                 artwork="",
             )
         return None
+
+    async def search(self, meta: ResolvedContent, target_type: ContentType) -> list[SearchHit]:
+        # ISRC/UPC sind global eindeutige IDs — direkter Filter liefert definitionsgemäß
+        # dieselbe Aufnahme. Ohne diese IDs fällt die Suche auf Metadata-Query zurück.
+        if target_type == ContentType.TRACK and meta.isrc:
+            return await self._search_tracks_by_isrc(meta.isrc)
+        if target_type == ContentType.ALBUM and meta.upc:
+            return await self._search_albums_by_upc(meta.upc)
+        if target_type == ContentType.TRACK:
+            return await self._search_metadata_tracks(meta)
+        if target_type == ContentType.ALBUM:
+            return await self._search_metadata_albums(meta)
+        if target_type == ContentType.ARTIST:
+            return await self._search_metadata_artists(meta)
+        return []
+
+    async def _search_tracks_by_isrc(self, isrc: str) -> list[SearchHit]:
+        # /tracks mit filter[isrc] liefert volle Track-Resources direkt in data[];
+        # anders als bei /searchResults brauchen wir kein include=, um an die IDs
+        # zu kommen.
+        data = await self._get("/tracks", params={"filter[isrc]": isrc})
+        if not data:
+            return []
+        return [
+            SearchHit(
+                service=self.service_id,
+                id=item["id"],
+                url=f"https://tidal.com/track/{item['id']}",
+                confidence=1.0,
+                match="isrc",
+            )
+            for item in (data.get("data") or [])[:_SEARCH_LIMIT]
+        ]
+
+    async def _search_albums_by_upc(self, upc: str) -> list[SearchHit]:
+        data = await self._get("/albums", params={"filter[barcodeId]": upc})
+        if not data:
+            return []
+        return [
+            SearchHit(
+                service=self.service_id,
+                id=item["id"],
+                url=f"https://tidal.com/album/{item['id']}",
+                confidence=1.0,
+                match="upc",
+            )
+            for item in (data.get("data") or [])[:_SEARCH_LIMIT]
+        ]
+
+    async def _search_metadata_tracks(self, meta: ResolvedContent) -> list[SearchHit]:
+        query = _metadata_query(meta)
+        if not query:
+            return []
+        data = await self._search_relationship(query, "tracks")
+        return _hits_from_search(data, kind="tracks", service=self.service_id, match="metadata")
+
+    async def _search_metadata_albums(self, meta: ResolvedContent) -> list[SearchHit]:
+        query = _metadata_query(meta)
+        if not query:
+            return []
+        data = await self._search_relationship(query, "albums")
+        return _hits_from_search(data, kind="albums", service=self.service_id, match="metadata")
+
+    async def _search_metadata_artists(self, meta: ResolvedContent) -> list[SearchHit]:
+        # Artist-Resolve legt den Namen in `title` ab; ist eine Artist-Query ohne
+        # Namen (theoretisch Tolerant-Pfad), leere Ergebnisliste statt Leer-Query.
+        query = meta.title.strip()
+        if not query:
+            return []
+        data = await self._search_relationship(query, "artists")
+        return _hits_from_search(data, kind="artists", service=self.service_id, match="metadata")
+
+    async def _search_relationship(
+        self, query: str, kind: str
+    ) -> dict[str, Any] | None:
+        # Tidal-Suche hängt den Query-String als Pfad-Segment hinter /searchResults/.
+        # Pfad-Encoding via quote(safe=""): auch '/' in Queries muss escaped werden,
+        # sonst kollidiert es mit dem nachfolgenden /relationships/-Segment.
+        path = f"/searchResults/{quote(query, safe='')}/relationships/{kind}"
+        return await self._get(path, params={"include": kind})
+
+
+def _metadata_query(meta: ResolvedContent) -> str:
+    # "<Artist> <Title>" ist das Query-Pattern mit der empirisch höchsten Treffer-
+    # Qualität auf der Tidal-Search — Artist-First bewirkt, dass Tidal-Ranking
+    # Künstler-Treffer vor Covern/Remixen priorisiert.
+    artist = meta.artists[0] if meta.artists else ""
+    return f"{artist} {meta.title}".strip()
+
+
+def _hits_from_search(
+    data: dict[str, Any] | None, *, kind: str, service: str, match: MatchType
+) -> list[SearchHit]:
+    # /searchResults/{q}/relationships/{kind} liefert data[] als Resource-Identifier
+    # (type+id) und die vollen Resources in included[]. Wir nehmen die ID-Reihenfolge
+    # aus data[] als Relevance-Ranking (von Tidal vorsortiert) und bauen die URL
+    # aus dem Typ (Tidal-Responses enthalten keinen external_url).
+    if not data:
+        return []
+    # Kind "tracks" → URL-Prefix "track". JSON:API-Type-Name ist Plural, URL-Pfad Singular.
+    url_prefix = kind.rstrip("s")
+    refs = (data.get("data") or [])[:_SEARCH_LIMIT]
+    return [
+        SearchHit(
+            service=service,
+            id=ref["id"],
+            url=f"https://tidal.com/{url_prefix}/{ref['id']}",
+            # Matcher setzt den finalen Score aus Title/Artist/Duration-Vergleich;
+            # der Adapter liefert hier nur unbewertete Kandidaten.
+            confidence=0.0,
+            match=match,
+        )
+        for ref in refs
+    ]
 
 
 def _join_artists(
