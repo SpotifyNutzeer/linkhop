@@ -13,12 +13,8 @@
   let error: ApiError | null = null;
 
   onMount(async () => {
-    const shortId = $page.params.shortId;
-    if (!shortId) {
-      error = new ApiError('not_found', 404, 'Kurzlink nicht gefunden');
-      loading = false;
-      return;
-    }
+    // Route matcher /c/[shortId] guarantees a non-empty string here.
+    const shortId = $page.params.shortId!;
     try {
       result = await lookup(shortId);
     } catch (e) {

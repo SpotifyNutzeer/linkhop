@@ -10,6 +10,7 @@
   let state: State = 'idle';
   let shortUrl = '';
   let shareError: ApiError | null = null;
+  let currentController: AbortController | null = null;
 
   let copied = false;
   let copyFailed = false;
@@ -25,21 +26,30 @@
   }
 
   async function share() {
+    currentController?.abort();
+    const ctrl = new AbortController();
+    currentController = ctrl;
     state = 'loading';
     shareError = null;
     try {
-      const res = await convert(sourceUrl, { share: true });
-      const id = res.share?.id;
-      if (!id) {
+      const res = await convert(sourceUrl, { share: true, signal: ctrl.signal });
+      if (ctrl.signal.aborted) return;
+      const info = (res as { share?: { id: string; url: string } }).share;
+      if (!info?.id) {
         shareError = new ApiError('server_error', 0, 'Antwort ohne Share-ID', sourceUrl);
         state = 'error';
         return;
       }
-      shortUrl = `${window.location.origin}/c/${id}`;
+      shortUrl = info.url ?? `${window.location.origin}/c/${info.id}`;
       state = 'done';
     } catch (e) {
+      if (ctrl.signal.aborted || (e as DOMException).name === 'AbortError') return;
       shareError = e instanceof ApiError ? e : new ApiError('server_error', 0, String(e), sourceUrl);
       state = 'error';
+    } finally {
+      if (currentController === ctrl) {
+        currentController = null;
+      }
     }
   }
 
@@ -59,6 +69,7 @@
 
   onDestroy(() => {
     if (copyTimer) clearTimeout(copyTimer);
+    currentController?.abort();
   });
 </script>
 

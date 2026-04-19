@@ -1,13 +1,8 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { setupServer } from 'msw/node';
-import { http, HttpResponse } from 'msw';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, fireEvent, findByText, waitFor } from '@testing-library/svelte';
 import ShareButton from './ShareButton.svelte';
-
-const server = setupServer();
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
-afterEach(() => server.resetHandlers());
-afterAll(() => server.close());
+import * as client from '$lib/api/client';
+import { ApiError } from '$lib/api/types';
 
 describe('ShareButton', () => {
   beforeEach(() => {
@@ -16,6 +11,7 @@ describe('ShareButton', () => {
       configurable: true,
       writable: true
     });
+    vi.restoreAllMocks();
   });
 
   it('initially renders a "Teilen" button', () => {
@@ -25,32 +21,32 @@ describe('ShareButton', () => {
     expect(getByRole('button', { name: /teilen/i })).toBeInTheDocument();
   });
 
-  it('renders shortUrl after successful share call', async () => {
-    server.use(
-      http.get('*/api/v1/convert', ({ request }) => {
-        const url = new URL(request.url);
-        expect(url.searchParams.get('share')).toBe('true');
-        return HttpResponse.json({
-          source: { service: 'spotify' },
-          targets: {},
-          cache: { hit: false, ttl_seconds: 0 },
-          share: { id: 'ab3x9k' }
-        });
-      })
-    );
+  it('fetches share-id on click and displays short link', async () => {
+    const captured: { url: string; opts: Parameters<typeof client.convert>[1] }[] = [];
+    const spy = vi.spyOn(client, 'convert').mockImplementation(async (url, opts) => {
+      captured.push({ url, opts });
+      return {
+        source: { service: 'spotify' },
+        targets: {},
+        cache: { hit: false, ttl_seconds: 0 },
+        share: { id: 'ab3x9k', url: 'https://example.com/c/ab3x9k' }
+      } as Awaited<ReturnType<typeof client.convert>>;
+    });
     const { getByRole, container } = render(ShareButton, {
       props: { sourceUrl: 'https://spotify.com/track/1' }
     });
     await fireEvent.click(getByRole('button', { name: /teilen/i }));
-    const code = await findByText(container as HTMLElement, /\/c\/ab3x9k$/);
+    const code = await findByText(container as HTMLElement, /https:\/\/example\.com\/c\/ab3x9k$/);
     expect(code).toBeInTheDocument();
+    expect(captured).toHaveLength(1);
+    expect(captured[0].opts?.share).toBe(true);
+    expect(captured[0].opts?.signal).toBeInstanceOf(AbortSignal);
+    spy.mockRestore();
   });
 
-  it('shows error message on 500 response', async () => {
-    server.use(
-      http.get('*/api/v1/convert', () =>
-        HttpResponse.json({ code: 'server_error', message: 'boom' }, { status: 500 })
-      )
+  it('shows error message on server error', async () => {
+    const spy = vi.spyOn(client, 'convert').mockRejectedValue(
+      new ApiError('server_error', 500, 'boom', 'https://spotify.com/track/1')
     );
     const { getByRole, container } = render(ShareButton, {
       props: { sourceUrl: 'https://spotify.com/track/1' }
@@ -60,5 +56,6 @@ describe('ShareButton', () => {
       const msg = await findByText(container as HTMLElement, /fehler beim erzeugen/i);
       expect(msg).toBeInTheDocument();
     });
+    spy.mockRestore();
   });
 });
