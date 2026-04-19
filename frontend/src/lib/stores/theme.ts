@@ -18,6 +18,9 @@ const mql =
 
 const systemDark = writable<boolean>(mql?.matches ?? false);
 
+// Module-singleton: the matchMedia listener and store subscriptions below are
+// intentionally never torn down — they live for the app's lifetime. Tests using
+// vi.resetModules() should be aware these side effects can leak across runs.
 mql?.addEventListener('change', (e) => {
   systemDark.set(e.matches);
 });
