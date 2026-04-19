@@ -57,12 +57,14 @@ backend/
 - Modify: `backend/src/linkhop/routes/services.py`
 - Modify: `backend/tests/test_config.py`
 - Modify: `backend/tests/test_url_parser.py`
+- Modify: `backend/README.md` _(Scope-Ergänzung bei Inline-Ausführung: `_YOUTUBE_MUSIC`-Zeile in Env-Var-Tabelle)_
 
-- [ ] **Step 1.1: Config-Field `enable_youtube_music` entfernen**
+- [x] **Step 1.1: Config-Field `enable_youtube_music` entfernen**
+  _(Auch `ytm_cookie_file: str = ""` raus — war ebenfalls Platzhalter, im Plan als Item übersehen.)_
 
 In `src/linkhop/config.py`: Die Zeile `enable_youtube_music: bool = True` (und falls vorhanden ein dazugehöriger `AliasChoices`-Eintrag) ersatzlos streichen. Die anderen `enable_*`-Flags und Tidal-Credentials bleiben.
 
-- [ ] **Step 1.2: URL-Parser aufräumen**
+- [x] **Step 1.2: URL-Parser aufräumen**
 
 In `src/linkhop/url_parser.py`:
 - `_YTM_ID`-Regex ersatzlos streichen.
@@ -70,25 +72,16 @@ In `src/linkhop/url_parser.py`:
 
 Der `parse_qs`-Import wird dadurch ungenutzt — ruff `F401` entfernt ihn auto-fix. In der Commit-Message erwähnen.
 
-- [ ] **Step 1.3: `_NAMES`-Eintrag entfernen**
+- [x] **Step 1.3: `_NAMES`-Eintrag entfernen**
 
 In `src/linkhop/routes/services.py`: Die Zeile `"youtube_music": "YouTube Music",` aus dem `_NAMES`-Dict streichen.
 
-- [ ] **Step 1.4: Tests aufräumen**
+- [x] **Step 1.4: Tests aufräumen**
+  _(Scope-Erweiterung: auch 3 **invalide** YT-Music-URL-Cases raus — nach Parser-Streichung landen sie alle im generischen `no matching service`-Pfad und testen dadurch nichts Service-Spezifisches mehr.)_
 
-In `tests/test_config.py`: Die Assertion `assert settings.enable_youtube_music is True` streichen.
+- [x] **Step 1.5: Tests laufen lassen** — 151 passed, 2 skipped (−6 gegenüber Plan A, alle YT-Music-URL-Cases).
 
-In `tests/test_url_parser.py`: Die drei parametrisierten Cases mit `music.youtube.com` entfernen. Falls ein `test_yt_music_*`-Test existiert, ebenfalls.
-
-- [ ] **Step 1.5: Tests laufen lassen**
-
-```bash
-cd backend && pytest -q
-```
-
-Expected: weiterhin grün, ggf. 3 Tests weniger (URL-Parser-Parametrisierung).
-
-- [ ] **Step 1.6: Commit**
+- [x] **Step 1.6: Commit**
 
 ```bash
 cd /home/paul/git/linkconverter
