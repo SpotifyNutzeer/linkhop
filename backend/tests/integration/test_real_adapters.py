@@ -5,6 +5,7 @@ import pytest
 
 from linkhop.adapters.deezer import DeezerAdapter
 from linkhop.adapters.spotify import SpotifyAdapter
+from linkhop.adapters.tidal import TidalAdapter
 from linkhop.models.domain import ContentType
 from linkhop.url_parser import parse
 
@@ -30,6 +31,11 @@ async def clients():
                 client_secret=os.environ["LINKHOP_SPOTIFY_CLIENT_SECRET"],
             ),
             "deezer": DeezerAdapter(client=http),
+            "tidal": TidalAdapter(
+                client=http,
+                client_id=os.environ["LINKHOP_TIDAL_CLIENT_ID"],
+                client_secret=os.environ["LINKHOP_TIDAL_CLIENT_SECRET"],
+            ),
         }
 
 
@@ -53,4 +59,30 @@ async def test_deezer_to_spotify_via_isrc(clients):
     assert source is not None
     assert source.isrc, "Deezer resolve returned no ISRC — ID rotated?"
     hits = await clients["spotify"].search(source, ContentType(parsed.type))
+    assert any(h.match == "isrc" for h in hits)
+
+
+async def test_tidal_to_spotify_via_isrc(clients):
+    # Stabile, bekannte Track-ID — swap if Tidal 404s.
+    # Grüner Test verifiziert implizit die 3 offenen Task-3-Fragen:
+    # (1) httpx' filter%5Bisrc%5D-Encoding wird von Tidal akzeptiert,
+    # (2) countryCode=DE liefert nicht-leere Resolve-Response,
+    # (3) Tidal liefert ISRC im attributes-Feld für den Happy-Path.
+    parsed = parse("https://tidal.com/track/77640617")
+    source = await clients["tidal"].resolve(parsed)
+    assert source is not None
+    assert source.isrc, "Tidal resolve returned no ISRC — ID rotated?"
+    hits = await clients["spotify"].search(source, ContentType(parsed.type))
+    assert any(h.match == "isrc" for h in hits)
+
+
+async def test_spotify_to_tidal_via_isrc(clients):
+    # Prüft Tidal-SEARCH-Pfad (filter[isrc]) — Gegenprobe zu oben, wo Tidal nur
+    # resolved wurde. Wenn dieser Test grün ist, akzeptiert Tidal die
+    # %5B%5D-Encodings auf der /tracks-Route.
+    parsed = parse("https://open.spotify.com/track/6habFhsOp2NvshLv26DqMb")
+    source = await clients["spotify"].resolve(parsed)
+    assert source is not None
+    assert source.isrc, "Spotify resolve returned no ISRC — ID rotated?"
+    hits = await clients["tidal"].search(source, ContentType(parsed.type))
     assert any(h.match == "isrc" for h in hits)
