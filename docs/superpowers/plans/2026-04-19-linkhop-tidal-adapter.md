@@ -100,7 +100,9 @@ git commit -m "chore(backend): drop YouTube Music placeholders (Plan B Task 1)"
 - Create: `backend/tests/fixtures/tidal_artist.json`
 - Create: `backend/tests/adapters/test_tidal.py`
 
-- [ ] **Step 2.0: Tidal-OpenAPI-Recherche (Pflicht vor Code)**
+- [x] **Step 2.0: Tidal-OpenAPI-Recherche (Pflicht vor Code)**
+
+  **Done 2026-04-19.** Verifiziert gegen `tidal-music/tidal-sdk-web` HEAD `0ccc13e9` (generierte OpenAPI-TS-Types + auth-Package). **Plan-Korrektur:** Token wird via Form-Body gesendet (`client_id` + `client_secret` + `grant_type`), **nicht** per Basic-Auth wie ursprünglich angenommen. Artwork ist JSON:API-Resource (`type="artworks"`) via `include=coverArt`, nicht `attributes.imageLinks[]`. Beides in Header-Kommentar von `tidal.py` dokumentiert.
 
 Der Implementer-Subagent **muss vor dem Schreiben von Code** die aktuelle Tidal-OpenAPI-Dokumentation fetchen und die folgenden Assumptions verifizieren, bevor der Adapter-Code entsteht. Assumptions stehen hier als Best-Knowledge-Start; sobald Docs widersprechen, zählt das Dokumentierte.
 
@@ -133,7 +135,7 @@ Assumptions (zu verifizieren):
 
 Dieser Kommentar ist **Plan-Fidelity-Pflicht**: er begründet spätere Design-Entscheidungen und muss im Review verifizierbar sein.
 
-- [ ] **Step 2.1: `AdapterCapabilities` und Grundgerüst**
+- [x] **Step 2.1: `AdapterCapabilities` und Grundgerüst**
 
 In `src/linkhop/adapters/tidal.py`:
 
@@ -170,7 +172,7 @@ class TidalAdapter:
 **Begründung `_COUNTRY` als Constant statt Settings-Field:**
 Tidal serviert Katalog + Artwork regional gefiltert. Wenn der Backend-Standort wechselt, wird das ein Settings-Field (`LINKHOP_TIDAL_COUNTRY`); für V1 ist eine Konstante ausreichend und vermeidet Konfigurations-Oberfläche ohne Nutzen.
 
-- [ ] **Step 2.2: Token-Refresh (wie Spotify)**
+- [x] **Step 2.2: Token-Refresh (wie Spotify)**
 
 ```python
     async def _ensure_token(self) -> str:
@@ -193,7 +195,7 @@ Tidal serviert Katalog + Artwork regional gefiltert. Wenn der Backend-Standort w
 
 Identisch zum Spotify-Token-Pattern. 30s-Puffer vor Expiry verhindert Race beim Request-Boundary.
 
-- [ ] **Step 2.3: `_get`-Helper mit 404/401-Handling**
+- [x] **Step 2.3: `_get`-Helper mit 404/401-Handling**
 
 ```python
     async def _get(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any] | None:
@@ -216,7 +218,7 @@ Identisch zum Spotify-Token-Pattern. 30s-Puffer vor Expiry verhindert Race beim 
         return resp.json()
 ```
 
-- [ ] **Step 2.4: `resolve()` für Track/Album/Artist**
+- [x] **Step 2.4: `resolve()` für Track/Album/Artist**
 
 Grundgerüst (Response-Felder an verifizierte Shape aus Step 2.0 anpassen):
 
@@ -292,7 +294,7 @@ def _pick_artwork(image_links: list[dict[str, Any]]) -> str:
     return best.get("href", "")
 ```
 
-- [ ] **Step 2.5: Fixtures anlegen**
+- [x] **Step 2.5: Fixtures anlegen**
 
 Drei JSON-Fixtures mit der verifizierten Tidal-Response-Shape (Step 2.0):
 
@@ -302,7 +304,7 @@ Drei JSON-Fixtures mit der verifizierten Tidal-Response-Shape (Step 2.0):
 
 **Pflicht-Feld für Track-Fixture:** `attributes.isrc` gesetzt, damit Resolve→Search-Chain im E2E-Test Task 5 den ISRC-Pfad trifft. Ohne ISRC testen wir am Happy-Path vorbei.
 
-- [ ] **Step 2.6: Unit-Tests für `resolve()` — `tests/adapters/test_tidal.py`**
+- [x] **Step 2.6: Unit-Tests für `resolve()` — `tests/adapters/test_tidal.py`**
 
 Orientierung am bestehenden `tests/adapters/test_spotify.py`-Pattern (Fidelity-Pflicht):
 `@respx.mock`-Decorator pro Test, `respx.post(URL).respond(json=fix(...))` inline, Token-Mock in jedem Test inline mocken (keine separate Fixture), `async with`-Fixture für Resource-Cleanup.
@@ -349,7 +351,7 @@ async def test_resolve_track(adapter: TidalAdapter):
 
 Plus analoge Tests für Album (Pflicht-Feld `upc`), Artist, und ein 404-Test (`respx.get(...).respond(status_code=404)` → `None`-Rückgabe). Konkrete Assertion-Werte (Titel, ISRC-String, Artist-Namen) aus der tatsächlichen Fixture einsetzen — `assert result.isrc == "XXX"` ist informativer als `assert result.isrc`.
 
-- [ ] **Step 2.7: Tests laufen lassen**
+- [x] **Step 2.7: Tests laufen lassen**
 
 ```bash
 cd backend && pytest -q tests/adapters/test_tidal.py
@@ -357,13 +359,16 @@ cd backend && pytest -q tests/adapters/test_tidal.py
 
 Expected: alle grün.
 
-- [ ] **Step 2.8: Commit**
+- [x] **Step 2.8: Commit**
 
-```bash
-cd /home/paul/git/linkconverter
-git add backend/src/linkhop/adapters/tidal.py backend/tests/
-git commit -m "feat(backend): tidal adapter resolve (Plan B Task 2)"
-```
+  **Done 2026-04-19.** Task 2 Implementierung via Subagent, gefolgt von parallel Spec+Quality-Review. 7 Findings akzeptiert (Q2-a, Q2-c, Q3-a/L3, Q3-b, Q3-d, L1, L2), 4 rejected (Q1-c/Q6-a defensive JSON:API-guards, Q4-a project-wide language-policy, L4 feature-creep). Split-Commits:
+  - `1ac40e2 feat(backend): tidal adapter resolve (Plan B Task 2)` (implementer)
+  - `09053cd fix(backend): tidal adapter edge cases (review Q2-a, L2)`
+  - `ddc23d9 test(backend): tidal edge cases (review Q3-a, Q3-b, Q3-d, L3)`
+  - `13c5cc1 docs(backend): tidal adapter — SDK-Pin + silent-drop Begründung (review Q2-c, L1)`
+
+  Tests: 15 in `tests/adapters/test_tidal.py`, Full-Suite 166 passed / 2 skipped.
+  Plan-Korrekturen: Token via Form-Body statt Basic-Auth; Artwork via JSON:API-`type="artworks"`-Resource statt `attributes.imageLinks[]`.
 
 ---
 
