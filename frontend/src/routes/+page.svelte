@@ -50,7 +50,9 @@
   }
 
   function onInputBlur() {
-    // Delay closing so a click on a HistoryDropdown item can still land.
+    // Blur->click race workaround (not a debounce): without the delay, clicking a
+    // HistoryDropdown item blurs the input, hides the dropdown, and the click lands
+    // on nothing. 150ms lets the click fire before the dropdown detaches.
     setTimeout(() => {
       dropdownOpen = false;
     }, 150);
