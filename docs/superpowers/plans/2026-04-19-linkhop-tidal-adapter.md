@@ -619,7 +619,7 @@ Expected: alle grün, Tidal-Test-Count wächst um ~2.
 - Modify (nach Rename): `backend/tests/integration/test_real_adapters.py`
 - Modify: `backend/README.md` (neue Env-Vars dokumentieren)
 
-- [ ] **Step 5.1: Datei umbenennen**
+- [x] **Step 5.1: Datei umbenennen**
 
 ```bash
 cd backend
@@ -628,7 +628,7 @@ git mv tests/integration/test_real_spotify_deezer.py tests/integration/test_real
 
 Grund: Mit Tidal drin ist der Name nicht mehr akkurat; Rename jetzt vermeidet eine spätere kosmetische Umbenennung.
 
-- [ ] **Step 5.2: Tidal-Fixture für Live-Test**
+- [x] **Step 5.2: Tidal-Fixture für Live-Test**
 
 Am Ende des `clients`-Fixtures den Tidal-Adapter ergänzen:
 
@@ -651,7 +651,7 @@ async def clients():
         }
 ```
 
-- [ ] **Step 5.3: Zwei neue Tidal-Tests**
+- [x] **Step 5.3: Zwei neue Tidal-Tests**
 
 ```python
 async def test_tidal_to_spotify_via_isrc(clients):
@@ -674,7 +674,7 @@ async def test_spotify_to_tidal_via_isrc(clients):
 
 ISRC-Precondition-Assertion wie in Plan A Task 26: ohne ISRC-Payload würde der Test als "kein Match" scheitern statt als "Quelle hat keinen ISRC gemeldet" — die Diagnostik ist den zusätzlichen Assert wert.
 
-- [ ] **Step 5.4: README-Update**
+- [x] **Step 5.4: README-Update**
 
 In `backend/README.md` unter dem Integration-Test-Block:
 
@@ -684,6 +684,8 @@ Live-Integrationstests benötigen zusätzlich:
 ```
 
 - [ ] **Step 5.5: Live-Smoke lokal (optional, nur wenn Credentials vorhanden)**
+
+  **Pending — User-Entscheidung.** Nicht automatisiert ausführbar (braucht echte Tidal-Dev-App-Creds + Netz). User hat Tidal-Developer-Access laut Task-1-Scope-Gespräch; der Smoke-Run ist sinnvoll nach Plan-B-Abschluss, um die 3 offenen Task-3-Fragen live zu schließen (httpx-Bracket-Encoding, Query-Ranking, Page-Size).
 
 ```bash
 cd backend
