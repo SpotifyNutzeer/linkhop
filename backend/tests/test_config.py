@@ -1,13 +1,4 @@
-import pytest
-
 from linkhop.config import Settings
-
-
-@pytest.fixture(autouse=True)
-def _isolate_env_file(tmp_path, monkeypatch):
-    # Settings liest `.env` aus dem Arbeitsverzeichnis. Tests dürfen nicht
-    # davon abhängen, was der Entwickler lokal in backend/.env eingetragen hat.
-    monkeypatch.chdir(tmp_path)
 
 
 def test_defaults_when_env_empty(monkeypatch):

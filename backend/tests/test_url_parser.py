@@ -17,6 +17,9 @@ from linkhop.url_parser import ParsedUrl, UnsupportedUrlError, parse
     ("https://tidal.com/track/77640617", "tidal", "track", "77640617"),
     ("https://tidal.com/album/77640616", "tidal", "album", "77640616"),
     ("https://tidal.com/artist/3527", "tidal", "artist", "3527"),
+    # Share-Suffix der Tidal-App (siehe Report von 2026-04-19)
+    ("https://tidal.com/track/513174201/u", "tidal", "track", "513174201"),
+    ("https://tidal.com/browse/album/77640616/u", "tidal", "album", "77640616"),
 ])
 def test_parse_valid(url, service, type_, id_):
     result = parse(url)
