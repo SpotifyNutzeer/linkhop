@@ -34,7 +34,6 @@ def test_service_enable_flags_default_true():
     assert settings.enable_spotify is True
     assert settings.enable_deezer is True
     assert settings.enable_tidal is True
-    assert settings.enable_youtube_music is True
 
 
 def test_cors_allow_origins_parses_comma_separated(monkeypatch):

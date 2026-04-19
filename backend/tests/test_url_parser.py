@@ -17,9 +17,6 @@ from linkhop.url_parser import ParsedUrl, UnsupportedUrlError, parse
     ("https://tidal.com/track/77640617", "tidal", "track", "77640617"),
     ("https://tidal.com/album/77640616", "tidal", "album", "77640616"),
     ("https://tidal.com/artist/3527", "tidal", "artist", "3527"),
-    ("https://music.youtube.com/watch?v=dQw4w9WgXcQ", "youtube_music", "track", "dQw4w9WgXcQ"),
-    ("https://music.youtube.com/playlist?list=OLAK5uy_1234", "youtube_music", "album", "OLAK5uy_1234"),  # noqa: E501
-    ("https://music.youtube.com/channel/UC1234", "youtube_music", "artist", "UC1234"),
 ])
 def test_parse_valid(url, service, type_, id_):
     result = parse(url)
@@ -36,9 +33,6 @@ def test_parse_valid(url, service, type_, id_):
     "spotify:track:",                          # empty ID
     "spotify:track:abc def",                   # whitespace in ID
     "spotify:track:has/slash",                 # invalid char
-    "https://music.youtube.com/channel/../watch",  # path traversal
-    "https://music.youtube.com/watch?v=bad id",    # whitespace in v
-    "https://music.youtube.com/playlist?list=has/slash",  # invalid list char
     "http://[invalid",                          # malformed URL (urlparse raises)
 ])
 def test_parse_invalid_raises(url):

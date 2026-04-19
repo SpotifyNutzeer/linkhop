@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import urlparse
 
 
 class UnsupportedUrlError(ValueError):
@@ -20,7 +20,6 @@ _SPOTIFY_ID = re.compile(r"^[A-Za-z0-9]+$")
 _SPOTIFY_PATH = re.compile(r"^/(track|album|artist)/([A-Za-z0-9]+)/?$")
 _DEEZER_PATH = re.compile(r"^(?:/[a-z]{2})?/(track|album|artist)/(\d+)/?$")
 _TIDAL_PATH = re.compile(r"^(?:/browse)?/(track|album|artist)/(\d+)/?$")
-_YTM_ID = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 def parse(url: str) -> ParsedUrl:
@@ -62,19 +61,5 @@ def parse(url: str) -> ParsedUrl:
         m = _TIDAL_PATH.match(path)
         if m:
             return ParsedUrl("tidal", m.group(1), m.group(2))
-
-    elif host == "music.youtube.com":
-        if path == "/watch":
-            v = parse_qs(parsed.query).get("v", [None])[0]
-            if v and _YTM_ID.match(v):
-                return ParsedUrl("youtube_music", "track", v)
-        elif path == "/playlist":
-            lst = parse_qs(parsed.query).get("list", [None])[0]
-            if lst and _YTM_ID.match(lst):
-                return ParsedUrl("youtube_music", "album", lst)
-        elif path.startswith("/channel/"):
-            chan = path[len("/channel/") :].rstrip("/")
-            if chan and _YTM_ID.match(chan):
-                return ParsedUrl("youtube_music", "artist", chan)
 
     raise UnsupportedUrlError(f"no matching service for host: {host}")

@@ -12,7 +12,6 @@ _NAMES = {
     "spotify": "Spotify",
     "deezer": "Deezer",
     "tidal": "Tidal",
-    "youtube_music": "YouTube Music",
 }
 
 
