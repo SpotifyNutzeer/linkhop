@@ -1,0 +1,14 @@
+{
+  "data": {
+    "id": "3528266",
+    "type": "artists",
+    "attributes": {
+      "name": "Kavinsky",
+      "handle": "kavinsky",
+      "popularity": 0.7
+    },
+    "relationships": {
+      "albums": { "data": [] }
+    }
+  }
+}

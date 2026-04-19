@@ -1,0 +1,42 @@
+{
+  "data": {
+    "id": "77640617",
+    "type": "tracks",
+    "attributes": {
+      "title": "Nightcall",
+      "isrc": "FR6V81200001",
+      "duration": "PT4M17S",
+      "explicit": false,
+      "popularity": 0.56,
+      "key": "UNKNOWN",
+      "keyScale": "UNKNOWN",
+      "mediaTags": []
+    },
+    "relationships": {
+      "artists": { "data": [{ "type": "artists", "id": "3528266" }] },
+      "albums":  { "data": [{ "type": "albums",  "id": "17927863" }] }
+    }
+  },
+  "included": [
+    {
+      "id": "3528266",
+      "type": "artists",
+      "attributes": { "name": "Kavinsky", "popularity": 0.7 }
+    },
+    {
+      "id": "17927863",
+      "type": "albums",
+      "attributes": {
+        "title": "OutRun",
+        "barcodeId": "0602537360697",
+        "duration": "PT46M17S",
+        "albumType": "ALBUM",
+        "explicit": false,
+        "numberOfItems": 13,
+        "numberOfVolumes": 1,
+        "popularity": 0.6,
+        "mediaTags": []
+      }
+    }
+  ]
+}

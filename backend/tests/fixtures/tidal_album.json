@@ -1,0 +1,50 @@
+{
+  "data": {
+    "id": "17927863",
+    "type": "albums",
+    "attributes": {
+      "title": "OutRun",
+      "barcodeId": "0602537360697",
+      "duration": "PT46M17S",
+      "albumType": "ALBUM",
+      "explicit": false,
+      "numberOfItems": 13,
+      "numberOfVolumes": 1,
+      "popularity": 0.6,
+      "releaseDate": "2013-02-25",
+      "mediaTags": []
+    },
+    "relationships": {
+      "artists":  { "data": [{ "type": "artists",  "id": "3528266" }] },
+      "coverArt": { "data": [{ "type": "artworks", "id": "cover-1" }] }
+    }
+  },
+  "included": [
+    {
+      "id": "3528266",
+      "type": "artists",
+      "attributes": { "name": "Kavinsky", "popularity": 0.7 }
+    },
+    {
+      "id": "cover-1",
+      "type": "artworks",
+      "attributes": {
+        "mediaType": "IMAGE",
+        "files": [
+          {
+            "href": "https://resources.tidal.com/images/outrun/80x80.jpg",
+            "meta": { "width": 80, "height": 80 }
+          },
+          {
+            "href": "https://resources.tidal.com/images/outrun/640x640.jpg",
+            "meta": { "width": 640, "height": 640 }
+          },
+          {
+            "href": "https://resources.tidal.com/images/outrun/1280x1280.jpg",
+            "meta": { "width": 1280, "height": 1280 }
+          }
+        ]
+      }
+    }
+  ]
+}
