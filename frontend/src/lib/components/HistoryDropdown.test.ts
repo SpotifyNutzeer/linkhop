@@ -64,7 +64,8 @@ describe('HistoryDropdown', () => {
       const listbox = getByRole('listbox', { name: /verlauf/i });
       const options = getAllByRole('option');
       options[2].focus();
-      // Simulate listbox active index = 2: move there first via End
+      // DOM focus alone does not sync the component's activeIndex; End does.
+      // Prime activeIndex to last so the subsequent ArrowDown exercises wrap-around.
       await fireEvent.keyDown(listbox, { key: 'End' });
       await fireEvent.keyDown(listbox, { key: 'ArrowDown' });
       expect(document.activeElement).toBe(options[0]);
