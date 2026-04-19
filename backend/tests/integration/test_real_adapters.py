@@ -63,12 +63,14 @@ async def test_deezer_to_spotify_via_isrc(clients):
 
 
 async def test_tidal_to_spotify_via_isrc(clients):
-    # Stabile, bekannte Track-ID — swap if Tidal 404s.
+    # Track 1566 = Weather Report "Crystal" (1972), ISRC USSM10023644 — klassischer
+    # Katalog-Eintrag, stabiler als aktuelle Releases. Am 2026-04-19 als Tidal-Smoke
+    # live geprüft; swap if Tidal 404s.
     # Grüner Test verifiziert implizit die 3 offenen Task-3-Fragen:
     # (1) httpx' filter%5Bisrc%5D-Encoding wird von Tidal akzeptiert,
     # (2) countryCode=DE liefert nicht-leere Resolve-Response,
     # (3) Tidal liefert ISRC im attributes-Feld für den Happy-Path.
-    parsed = parse("https://tidal.com/track/77640617")
+    parsed = parse("https://tidal.com/track/1566")
     source = await clients["tidal"].resolve(parsed)
     assert source is not None
     assert source.isrc, "Tidal resolve returned no ISRC — ID rotated?"
