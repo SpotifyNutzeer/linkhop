@@ -3,9 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "packageManager": "pnpm@10.33.0",
   "scripts": {
+    "gen:api": "openapi-typescript ../backend/openapi.json -o src/lib/api/schema.d.ts",
+    "predev": "pnpm gen:api",
+    "prebuild": "pnpm gen:api",
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
@@ -21,6 +26,8 @@
     "@testing-library/svelte": "^4.0.0",
     "@testing-library/user-event": "^14.5.0",
     "jsdom": "^24.0.0",
+    "msw": "^2.13.4",
+    "openapi-typescript": "^7.13.0",
     "svelte": "^4.2.0",
     "svelte-check": "^3.6.0",
     "tslib": "^2.6.0",
