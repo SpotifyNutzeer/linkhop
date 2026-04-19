@@ -1,41 +1,22 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import type { TargetResult } from '$lib/api/types';
+  import { createCopyFeedback } from '$lib/stores/copyFeedback';
 
   export let serviceId: string;
   export let displayName: string;
   export let result: TargetResult;
   export let isSource = false;
 
-  let copied = false;
-  let copyFailed = false;
-  let copyTimer: ReturnType<typeof setTimeout> | null = null;
-
-  function scheduleReset() {
-    if (copyTimer) clearTimeout(copyTimer);
-    copyTimer = setTimeout(() => {
-      copied = false;
-      copyFailed = false;
-    }, 1500);
-  }
+  const feedback = createCopyFeedback();
+  const { copied, copyFailed } = feedback;
 
   async function copy() {
     if (!linkUrl) return;
-    try {
-      await navigator.clipboard.writeText(linkUrl);
-      copied = true;
-      copyFailed = false;
-      scheduleReset();
-    } catch {
-      copied = false;
-      copyFailed = true;
-      scheduleReset();
-    }
+    await feedback.copy(linkUrl);
   }
 
-  onDestroy(() => {
-    if (copyTimer) clearTimeout(copyTimer);
-  });
+  onDestroy(() => feedback.destroy());
 
   $: linkUrl =
     (result.status === 'ok' || result.status === 'ok_low') ? result.url ?? null : null;
@@ -63,9 +44,9 @@
         aria-label="Link kopieren"
         on:click={copy}
       >
-        {#if copyFailed}
+        {#if $copyFailed}
           Kopieren fehlgeschlagen
-        {:else if copied}
+        {:else if $copied}
           ✓
         {:else}
           Kopieren
