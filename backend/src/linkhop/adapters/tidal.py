@@ -198,7 +198,8 @@ def _pick_cover_art(
     rels: dict[str, Any], included: dict[tuple[str, str], dict[str, Any]]
 ) -> str:
     # Cover-Art ist eine eigene Ressource (type="artworks") mit attributes.files[].
-    # Wähle erste Artwork-Referenz und daraus das größte File <= 640px, sonst das erste.
+    # Bevorzuge 640- oder 750-px-Variante (Standard-Thumbnail-Größen), sonst das
+    # erste File aus der Liste — Tidal garantiert keine sortierte Reihenfolge.
     refs = (rels.get("coverArt") or {}).get("data") or []
     for ref in refs:
         inc = included.get(("artworks", ref["id"]))
@@ -222,7 +223,9 @@ def _iso8601_to_ms(duration: str | None) -> int | None:
     if not duration:
         return None
     m = _DURATION_RE.match(duration)
-    if not m:
+    if not m or not any(m.groups()):
+        # "PT" allein ist spec-widrig (ISO 8601 verlangt mind. einen Designator);
+        # 0ms würde der Matcher fälschlich als "Null-Sekunden-Track" werten.
         return None
     hours = int(m.group(1) or 0)
     minutes = int(m.group(2) or 0)
