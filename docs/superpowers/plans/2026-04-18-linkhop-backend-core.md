@@ -5280,6 +5280,7 @@ import pytest
 
 from linkhop.adapters.deezer import DeezerAdapter
 from linkhop.adapters.spotify import SpotifyAdapter
+from linkhop.models.domain import ContentType
 from linkhop.url_parser import parse
 
 pytestmark = pytest.mark.skipif(
@@ -5305,7 +5306,7 @@ async def test_spotify_to_deezer_via_isrc(clients):
     parsed = parse("https://open.spotify.com/track/6habFhsOp2NvshLv26DqMb")
     source = await clients["spotify"].resolve(parsed)
     assert source is not None
-    hits = await clients["deezer"].search(source, parsed.type and __import__("linkhop.models.domain", fromlist=["ContentType"]).ContentType(parsed.type))
+    hits = await clients["deezer"].search(source, ContentType(parsed.type))
     assert any(h.match == "isrc" for h in hits)
 
 
@@ -5313,7 +5314,6 @@ async def test_deezer_to_spotify_via_isrc(clients):
     parsed = parse("https://www.deezer.com/track/3135556")
     source = await clients["deezer"].resolve(parsed)
     assert source is not None
-    from linkhop.models.domain import ContentType
     hits = await clients["spotify"].search(source, ContentType(parsed.type))
     assert any(h.match == "isrc" for h in hits)
 ```
