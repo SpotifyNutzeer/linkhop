@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import httpx
 
-from linkhop.adapters import DeezerAdapter, ServiceAdapter, SpotifyAdapter
+from linkhop.adapters import DeezerAdapter, ServiceAdapter, SpotifyAdapter, TidalAdapter
 from linkhop.config import Settings
 
 
@@ -19,5 +19,10 @@ def build_adapter_map(settings: Settings, http: httpx.AsyncClient) -> dict[str, 
         )
     if settings.enable_deezer:
         adapters["deezer"] = DeezerAdapter(client=http)
-    # Tidal / YouTube Music kommen in Plan B
+    if settings.enable_tidal and settings.tidal_client_id and settings.tidal_client_secret:
+        adapters["tidal"] = TidalAdapter(
+            client=http,
+            client_id=settings.tidal_client_id,
+            client_secret=settings.tidal_client_secret,
+        )
     return adapters
