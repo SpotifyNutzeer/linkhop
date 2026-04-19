@@ -110,16 +110,24 @@ jobs:
         working-directory: backend
         run: linkhop-admin init-db
 
-      # Hintergrund-Launches müssen stdin schliessen und `disown`, sonst
-      # blockiert bash den Step, bis der Kindprozess endet — auch wenn er
-      # mit `&` im Hintergrund läuft (geerbte FDs halten den Step offen).
+      # Hintergrund-Launches schliessen stdin und disownen, sonst hält bash
+      # den Step offen, solange der Kindprozess lebt. wait-on braucht ein
+      # explizites -t: der Default ist Infinity, d.h. ein crashender uvicorn
+      # würde den Step bis zum 6-h-Job-Limit pollen. 127.0.0.1 statt localhost,
+      # weil localhost auf ::1 resolven kann und uvicorn mit --host 127.0.0.1
+      # nur IPv4 bedient.
       - name: Start backend (uvicorn)
         working-directory: backend
         run: |
-          nohup uvicorn linkhop.main:app --host 0.0.0.0 --port 8080 \
+          nohup uvicorn linkhop.main:app --host 127.0.0.1 --port 8080 \
             > uvicorn.log 2>&1 < /dev/null &
           disown
-          npx --yes wait-on http://localhost:8080/api/v1/services
+          if ! npx --yes wait-on -t 60000 http://127.0.0.1:8080/api/v1/services; then
+            echo "::group::uvicorn.log"
+            cat uvicorn.log || true
+            echo "::endgroup::"
+            exit 1
+          fi
 
       - name: Start frontend dev server
         run: |
@@ -127,7 +135,13 @@ jobs:
           disown
 
       - name: Wait for frontend
-        run: npx --yes wait-on http://localhost:5173
+        run: |
+          if ! npx --yes wait-on -t 60000 http://127.0.0.1:5173; then
+            echo "::group::vite.log"
+            cat vite.log || true
+            echo "::endgroup::"
+            exit 1
+          fi
 
       - name: Run E2E
         run: pnpm test:e2e
