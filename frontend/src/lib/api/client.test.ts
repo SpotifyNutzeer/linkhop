@@ -12,10 +12,10 @@ afterAll(() => server.close());
 
 describe('api client', () => {
   it('convert returns response on 200', async () => {
+    let capturedUrlParam: string | null = null;
     server.use(
       http.get('*/api/v1/convert', ({ request }) => {
-        const url = new URL(request.url);
-        expect(url.searchParams.get('url')).toBe('https://example.com/track/1');
+        capturedUrlParam = new URL(request.url).searchParams.get('url');
         return HttpResponse.json({
           source: { service: 'tidal' },
           targets: {},
@@ -24,6 +24,7 @@ describe('api client', () => {
       })
     );
     const res = await convert('https://example.com/track/1');
+    expect(capturedUrlParam).toBe('https://example.com/track/1');
     expect(res.source.service).toBe('tidal');
     expect(res.cache.hit).toBe(false);
   });
@@ -47,10 +48,10 @@ describe('api client', () => {
   });
 
   it('convert passes share=true', async () => {
+    let capturedShareParam: string | null = null;
     server.use(
       http.get('*/api/v1/convert', ({ request }) => {
-        const url = new URL(request.url);
-        expect(url.searchParams.get('share')).toBe('true');
+        capturedShareParam = new URL(request.url).searchParams.get('share');
         return HttpResponse.json({
           source: {},
           targets: {},
@@ -60,6 +61,7 @@ describe('api client', () => {
       })
     );
     await convert('https://x', { share: true });
+    expect(capturedShareParam).toBe('true');
   });
 
   it('convert propagates AbortError without wrapping', async () => {
