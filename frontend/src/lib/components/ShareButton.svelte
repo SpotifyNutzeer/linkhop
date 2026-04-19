@@ -2,6 +2,7 @@
   import { onDestroy } from 'svelte';
   import { convert } from '$lib/api/client';
   import { ApiError } from '$lib/api/types';
+  import { createCopyFeedback } from '$lib/stores/copyFeedback';
 
   export let sourceUrl: string;
 
@@ -12,18 +13,8 @@
   let shareError: ApiError | null = null;
   let currentController: AbortController | null = null;
 
-  let copied = false;
-  let copyFailed = false;
-  let copyTimer: ReturnType<typeof setTimeout> | null = null;
-
-  function scheduleReset() {
-    if (copyTimer) clearTimeout(copyTimer);
-    copyTimer = setTimeout(() => {
-      copied = false;
-      copyFailed = false;
-      copyTimer = null;
-    }, 1500);
-  }
+  const feedback = createCopyFeedback();
+  const { copied, copyFailed } = feedback;
 
   async function share() {
     currentController?.abort();
@@ -55,20 +46,11 @@
 
   async function copy() {
     if (!shortUrl) return;
-    try {
-      await navigator.clipboard.writeText(shortUrl);
-      copied = true;
-      copyFailed = false;
-      scheduleReset();
-    } catch {
-      copied = false;
-      copyFailed = true;
-      scheduleReset();
-    }
+    await feedback.copy(shortUrl);
   }
 
   onDestroy(() => {
-    if (copyTimer) clearTimeout(copyTimer);
+    feedback.destroy();
     currentController?.abort();
   });
 </script>
@@ -81,9 +63,9 @@
   {:else if state === 'done'}
     <code class="short">{shortUrl}</code>
     <button type="button" class="copy" aria-label="Kurzlink kopieren" on:click={copy}>
-      {#if copyFailed}
+      {#if $copyFailed}
         Kopieren fehlgeschlagen
-      {:else if copied}
+      {:else if $copied}
         ✓
       {:else}
         Kopieren
