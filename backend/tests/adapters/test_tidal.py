@@ -6,7 +6,7 @@ import pytest
 import respx
 
 from linkhop.adapters.base import AdapterError
-from linkhop.adapters.tidal import TidalAdapter, _iso8601_to_ms
+from linkhop.adapters.tidal import TidalAdapter, _iso8601_to_ms, _pick_cover_art
 from linkhop.models.domain import ContentType
 from linkhop.url_parser import ParsedUrl
 
@@ -142,3 +142,64 @@ def test_iso8601_to_ms_parses_standard_forms():
     assert _iso8601_to_ms("PT30S") == 30_000
     assert _iso8601_to_ms(None) is None
     assert _iso8601_to_ms("nonsense") is None
+
+
+def test_iso8601_to_ms_accepts_decimal_seconds():
+    # ISO 8601 erlaubt Dezimal-Sekunden; Tidal liefert sie selten, aber die Spec
+    # sieht sie vor — Matcher darf hier nicht silently 0 zurückgeben.
+    assert _iso8601_to_ms("PT30.5S") == 30_500
+    assert _iso8601_to_ms("PT1M0.25S") == 60_250
+
+
+def test_iso8601_to_ms_rejects_bare_pt():
+    # "PT" ohne Designatoren ist spec-widrig; wäre der Regex permissiv, würde
+    # ein 0-ms-Track aus unserem Matching mit hoher Confidence herauskommen.
+    assert _iso8601_to_ms("PT") is None
+
+
+@respx.mock
+async def test_resolve_track_handles_empty_artists(adapter: TidalAdapter):
+    # Tidal liefert bei regional gefilterten Artists bisweilen data:[] — das
+    # darf nicht crashen und muss artists=() ergeben.
+    payload = {
+        "data": {
+            "id": "77640617",
+            "type": "tracks",
+            "attributes": {"title": "Nightcall", "duration": "PT4M17S"},
+            "relationships": {
+                "artists": {"data": []},
+                "albums": {"data": []},
+            },
+        },
+        "included": [],
+    }
+    respx.post("https://auth.tidal.com/v1/oauth2/token").respond(json=fix("tidal_token.json"))
+    respx.get("https://openapi.tidal.com/v2/tracks/77640617").respond(json=payload)
+    result = await adapter.resolve(ParsedUrl("tidal", "track", "77640617"))
+    assert result is not None
+    assert result.artists == ()
+    assert result.album is None
+
+
+def test_pick_cover_art_falls_back_to_first_file_without_640_750():
+    # Wenn keine Datei eine 640- oder 750-px-Variante ist, liefert der Helper
+    # das erste File — nicht leer, nicht None.
+    rels = {"coverArt": {"data": [{"type": "artworks", "id": "cover-x"}]}}
+    included = {
+        ("artworks", "cover-x"): {
+            "id": "cover-x",
+            "type": "artworks",
+            "attributes": {
+                "files": [
+                    {"href": "https://example.com/80.jpg", "meta": {"width": 80}},
+                    {"href": "https://example.com/1280.jpg", "meta": {"width": 1280}},
+                ]
+            },
+        }
+    }
+    assert _pick_cover_art(rels, included) == "https://example.com/80.jpg"
+
+
+def test_pick_cover_art_returns_empty_when_no_coverart():
+    # Kein coverArt-Relationship → leerer String, nicht None (ResolvedContent.artwork: str).
+    assert _pick_cover_art({}, {}) == ""
