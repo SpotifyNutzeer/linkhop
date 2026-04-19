@@ -326,7 +326,8 @@ async def test_search_track_metadata_fallback(adapter: TidalAdapter):
     assert all(h.match == "metadata" for h in hits)
     assert all(h.confidence == 0.0 for h in hits)  # Matcher setzt finalen Score
     params = route.calls.last.request.url.params
-    assert params["include"] == "tracks"
+    # Bewusst KEIN include= — data[] reicht für URL/ID, Sideload wäre tote Bandbreite.
+    assert "include" not in params
     assert params["countryCode"] == "DE"
 
 
@@ -346,7 +347,7 @@ async def test_search_artist_uses_searchresults(adapter: TidalAdapter):
     assert hits[0].match == "metadata"
     assert hits[0].confidence == 0.0
     params = route.calls.last.request.url.params
-    assert params["include"] == "artists"
+    assert "include" not in params
 
 
 @respx.mock

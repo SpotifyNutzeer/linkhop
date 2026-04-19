@@ -255,8 +255,12 @@ class TidalAdapter:
         # Tidal-Suche hängt den Query-String als Pfad-Segment hinter /searchResults/.
         # Pfad-Encoding via quote(safe=""): auch '/' in Queries muss escaped werden,
         # sonst kollidiert es mit dem nachfolgenden /relationships/-Segment.
+        #
+        # Bewusst KEIN include={kind}: data[] liefert bereits die Resource-Identifier,
+        # aus denen wir URL + SearchHit bauen; der Matcher holt pro Kandidat separat
+        # via resolve() die volle Meta. Sideload würde nur Bandbreite kosten.
         path = f"/searchResults/{quote(query, safe='')}/relationships/{kind}"
-        return await self._get(path, params={"include": kind})
+        return await self._get(path)
 
 
 def _metadata_query(meta: ResolvedContent) -> str:
