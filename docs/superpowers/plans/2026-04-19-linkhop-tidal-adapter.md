@@ -531,19 +531,18 @@ cd backend && pytest -q tests/adapters/test_tidal.py
 - Modify: `backend/src/linkhop/deps.py`
 - Modify: `backend/tests/test_deps.py`
 
-- [ ] **Step 4.1: Export in `adapters/__init__.py`**
+- [x] **Step 4.1: Export in `adapters/__init__.py`**
 
 Den Import und `__all__`-Eintrag für `TidalAdapter` ergänzen:
 
 ```python
-from linkhop.adapters.base import AdapterCapabilities, AdapterError, ServiceAdapter
+from linkhop.adapters.base import AdapterCapabilities, ServiceAdapter
 from linkhop.adapters.deezer import DeezerAdapter
 from linkhop.adapters.spotify import SpotifyAdapter
 from linkhop.adapters.tidal import TidalAdapter
 
 __all__ = [
     "AdapterCapabilities",
-    "AdapterError",
     "DeezerAdapter",
     "ServiceAdapter",
     "SpotifyAdapter",
@@ -551,9 +550,9 @@ __all__ = [
 ]
 ```
 
-Sortierung alphabetisch (ruff `RUF022`).
+Sortierung alphabetisch (ruff `RUF022`). **Kein `AdapterError`-Export** — bleibt beim existierenden Scope; Export-Expansion ist außerhalb Task 4.
 
-- [ ] **Step 4.2: `deps.py` erweitern**
+- [x] **Step 4.2: `deps.py` erweitern**
 
 ```python
 from linkhop.adapters import DeezerAdapter, ServiceAdapter, SpotifyAdapter, TidalAdapter
@@ -582,11 +581,16 @@ Der alte Kommentar `# Tidal / YouTube Music kommen in Plan B` wird ersatzlos ges
 
 **Absicherung wie bei Spotify:** Fehlende Credentials führen zu Skip, nicht zu einem registrierten aber defekten Adapter. Plan A Review-Finding — war die gleiche Logik, ist hier konsistent zu halten.
 
-- [ ] **Step 4.3: Test für `build_adapter_map` erweitern**
+- [x] **Step 4.3: Test für `build_adapter_map` erweitern**
 
-In `tests/test_deps.py`: Einen Test-Case hinzufügen, der mit `enable_tidal=True, tidal_client_id="x", tidal_client_secret="y"` bewirkt, dass `"tidal"` im Map vorkommt. Und einen Case, wo nur `enable_tidal=True` ohne Credentials gesetzt ist → `"tidal" not in adapters`.
+In `tests/test_deps.py`: **Zwei neue eigenständige Test-Cases** (nicht den existierenden `test_all_enabled_with_credentials` erweitern, damit Env-Mutation lokal bleibt):
 
-- [ ] **Step 4.4: Tests laufen lassen**
+1. `test_tidal_registered_when_credentials_present`: setzt `LINKHOP_TIDAL_CLIENT_ID` + `LINKHOP_TIDAL_CLIENT_SECRET` via monkeypatch → `"tidal" in m`, `isinstance(m["tidal"], TidalAdapter)`.
+2. `test_tidal_skipped_when_credentials_missing`: nur `enable_tidal=True` (default), keine Creds → `"tidal" not in m` (analog zu `test_spotify_skipped_when_credentials_missing`).
+
+Der bestehende `test_all_enabled_with_credentials` wird **nicht** verändert — würde sonst bei jedem Adapter-Add erneut touchiert werden müssen.
+
+- [x] **Step 4.4: Tests laufen lassen**
 
 ```bash
 cd backend && pytest -q
@@ -594,13 +598,17 @@ cd backend && pytest -q
 
 Expected: alle grün, Tidal-Test-Count wächst um ~2.
 
-- [ ] **Step 4.5: Commit**
+- [x] **Step 4.5: Commit**
 
-```bash
-cd /home/paul/git/linkconverter
-git add backend/src/linkhop/ backend/tests/test_deps.py
-git commit -m "feat(backend): wire tidal adapter into composition root (Plan B Task 4)"
-```
+  **Done 2026-04-19.** Task 4 inline implementiert (keine Subagent-Workflow — hochmechanisch, ~15 LOC). Split-Commits:
+  - `67d6062 feat(backend): wire tidal adapter into composition root (Plan B Task 4)`
+  - `944cf96 test(backend): tidal registration + creds-gate in build_adapter_map`
+
+  Pre-Implementation Plan-Fixes: `AdapterError`-Export aus `__all__`-Snippet entfernt (Scope-Expansion out-of-task); Step 4.3 expliziert, dass 2 neue Test-Cases angelegt werden (nicht der existierende `test_all_enabled_with_credentials` erweitert wird).
+
+  Zusatz-Finding: `test_both_flags_off_returns_empty` → `test_all_flags_off_returns_empty` umbenannt + `LINKHOP_ENABLE_TIDAL=false` ergänzt, damit der Test explizit statt implizit via fehlende Creds arbeitet.
+
+  Tests: 173 → **175 passed** / 2 skipped. Ruff + Mypy clean.
 
 ---
 
