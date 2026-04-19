@@ -22,7 +22,9 @@
       <button
         type="button"
         class="item"
+        role="option"
         aria-label={entry.title}
+        aria-selected="false"
         on:mousedown|preventDefault={() => select(entry.sourceUrl)}
         on:click={() => select(entry.sourceUrl)}
       >

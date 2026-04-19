@@ -26,7 +26,7 @@ describe('HistoryDropdown', () => {
     const handler = vi.fn();
     const { getByRole, component } = render(HistoryDropdown, { props: { open: true } });
     component.$on('select', (e: CustomEvent) => handler(e.detail));
-    await fireEvent.click(getByRole('button', { name: /T/ }));
+    await fireEvent.click(getByRole('option', { name: /T/ }));
     expect(handler).toHaveBeenCalledWith({ url: 'https://a' });
   });
 });
