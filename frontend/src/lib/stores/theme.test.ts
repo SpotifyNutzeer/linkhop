@@ -43,12 +43,14 @@ describe('theme store', () => {
   });
 
   it('updates data-theme when system preference changes while in auto mode', async () => {
-    let changeCallback: ((e: { matches: boolean }) => void) | null = null;
+    const listener: { fn: ((e: { matches: boolean }) => void) | null } = { fn: null };
     let isDark = false;
     vi.stubGlobal('matchMedia', (q: string) => ({
       matches: q.includes('dark') && isDark,
       media: q,
-      addEventListener: (_: string, cb: (e: { matches: boolean }) => void) => { changeCallback = cb; },
+      addEventListener: (_: string, cb: (e: { matches: boolean }) => void) => {
+        listener.fn = cb;
+      },
       removeEventListener: () => {}
     }));
     const { setTheme } = await import('./theme');
@@ -56,7 +58,7 @@ describe('theme store', () => {
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');
 
     isDark = true;
-    changeCallback?.({ matches: true });
+    listener.fn?.({ matches: true });
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
   });
 });

@@ -69,13 +69,16 @@ describe('api client', () => {
     await expect(lookup('missing')).rejects.toMatchObject({ code: 'not_found' });
   });
 
-  it('services returns map', async () => {
+  it('services returns list', async () => {
     server.use(
       http.get('*/api/v1/services', () =>
-        HttpResponse.json({ services: { spotify: { name: 'Spotify', capabilities: ['track'] } } })
+        HttpResponse.json({
+          services: [{ id: 'spotify', name: 'Spotify', capabilities: ['track'] }]
+        })
       )
     );
     const res = await services();
-    expect(res.services.spotify.name).toBe('Spotify');
+    expect(res.services).toHaveLength(1);
+    expect(res.services[0]).toMatchObject({ id: 'spotify', name: 'Spotify' });
   });
 });
