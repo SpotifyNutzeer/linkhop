@@ -1,8 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { get } from 'svelte/store';
 import { services } from './services';
 
 describe('services store', () => {
+  beforeEach(() => {
+    services.set({});
+  });
+
   it('starts empty', () => {
     expect(get(services)).toEqual({});
   });

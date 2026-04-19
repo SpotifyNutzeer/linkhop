@@ -41,6 +41,8 @@ export function addHistory(entry: HistoryEntry): void {
 }
 
 export function clearHistory(): void {
-  history.set([]);
-  persist([]);
+  history.update(() => {
+    persist([]);
+    return [];
+  });
 }
