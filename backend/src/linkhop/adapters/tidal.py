@@ -40,6 +40,15 @@ from linkhop.url_parser import ParsedUrl
 
 # Obergrenze für Search-Hits — Tidal paginiert cursor-basiert ohne page[limit]-Param;
 # wir schneiden client-seitig auf denselben Wert wie Spotify/Deezer (limit=3).
+#
+# Trade-off für Metadata-Search: liegt Tidals Default-Page-Size über 3 (OpenAPI-
+# Spec nennt keinen expliziten Default), werfen wir die Ränge 4..N bereits vor
+# dem Matcher weg. Bei ISRC/UPC ist das irrelevant (global eindeutig), aber bei
+# Freitext-Queries verlieren wir Recall, wenn der gewünschte Track außerhalb
+# der ersten 3 Ranking-Plätze liegt. Task 5 (Live-Tests) liefert das Bild.
+# Cursor-basiertes Iterieren + client-seitiges Re-Ranking wurde verworfen:
+# kostet mehr Round-Trips pro Suche, und unsere Confidence kommt ohnehin aus
+# Title/Artist/Duration, nicht aus API-Rank-Position.
 _SEARCH_LIMIT = 3
 
 _DURATION_RE = re.compile(r"^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?$")
