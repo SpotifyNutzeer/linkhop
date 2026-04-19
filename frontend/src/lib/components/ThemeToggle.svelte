@@ -1,7 +1,7 @@
 <script lang="ts">
   import { themePref, cycleTheme, type Pref } from '$lib/stores/theme';
 
-  const icons: Record<Pref, string> = { auto: '🌓', dark: '🌙', light: '☀️' };
+  const texts: Record<Pref, string> = { auto: 'Auto', dark: 'Dunkel', light: 'Hell' };
   const labels: Record<Pref, string> = {
     auto: 'Theme: automatisch, zum Wechseln klicken',
     dark: 'Theme: dunkel, zum Wechseln klicken',
@@ -15,7 +15,7 @@
   aria-label={labels[$themePref]}
   on:click={cycleTheme}
 >
-  {icons[$themePref]}
+  {texts[$themePref]}
 </button>
 
 <style>
