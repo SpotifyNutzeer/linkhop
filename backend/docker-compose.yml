@@ -5,8 +5,26 @@ services:
       POSTGRES_USER: linkhop
       POSTGRES_PASSWORD: linkhop
       POSTGRES_DB: linkhop
-    ports: ["5432:5432"]
+    # Loopback-Binding statt 0.0.0.0: ohne das ist `linkhop/linkhop` an
+    # jeden LAN-Nachbarn offen — harmlos im Home-Netz, bissig im Café-WLAN.
+    ports: ["127.0.0.1:5432:5432"]
+    # Named volume statt Default: `docker compose down` würde sonst
+    # Dev-DB-State mitsamt erstellten API-Keys löschen.
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U linkhop -d linkhop"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
 
   redis:
     image: redis:7-alpine
-    ports: ["6379:6379"]
+    ports: ["127.0.0.1:6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
