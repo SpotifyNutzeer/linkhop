@@ -1,10 +1,58 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, tick } from 'svelte';
   import { history, clearHistory } from '$lib/stores/history';
 
   export let open = false;
 
-  const dispatch = createEventDispatcher<{ select: { url: string } }>();
+  const dispatch = createEventDispatcher<{ select: { url: string }; close: void }>();
+
+  let activeIndex = 0;
+  let itemButtons: HTMLButtonElement[] = [];
+
+  // Keep activeIndex within bounds when the history list shrinks. When the
+  // dropdown closes, reset to 0 so the next open starts fresh.
+  $: if (!open) {
+    activeIndex = 0;
+  } else if (activeIndex >= $history.length) {
+    activeIndex = Math.max(0, $history.length - 1);
+  }
+
+  async function focusActive() {
+    await tick();
+    itemButtons[activeIndex]?.focus();
+  }
+
+  function handleKey(event: KeyboardEvent) {
+    const len = $history.length;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      dispatch('close');
+      return;
+    }
+    if (!len) return;
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        activeIndex = (activeIndex + 1) % len;
+        focusActive();
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        activeIndex = (activeIndex - 1 + len) % len;
+        focusActive();
+        break;
+      case 'Home':
+        event.preventDefault();
+        activeIndex = 0;
+        focusActive();
+        break;
+      case 'End':
+        event.preventDefault();
+        activeIndex = len - 1;
+        focusActive();
+        break;
+    }
+  }
 
   function select(url: string) {
     dispatch('select', { url });
@@ -16,15 +64,23 @@
 </script>
 
 {#if open && $history.length > 0}
-  <div class="dropdown" role="listbox" aria-label="Verlauf">
+  <div
+    class="dropdown"
+    role="listbox"
+    aria-label="Verlauf"
+    tabindex="-1"
+    on:keydown={handleKey}
+  >
     <div class="hint">Zuletzt:</div>
-    {#each $history as entry (entry.sourceUrl)}
+    {#each $history as entry, i (entry.sourceUrl)}
       <button
+        bind:this={itemButtons[i]}
         type="button"
         class="item"
         role="option"
         aria-label={entry.title}
-        aria-selected="false"
+        aria-selected={activeIndex === i}
+        tabindex={activeIndex === i ? 0 : -1}
         on:click={() => select(entry.sourceUrl)}
       >
         <span class="title">{entry.title}</span>
@@ -63,6 +119,7 @@
     align-items: baseline;
   }
   .item:hover { background: var(--bg); }
+  .item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
   .title { font-weight: 600; }
   .artists { color: var(--text-muted); }
   .url { color: var(--text-muted); font-size: 0.8rem; margin-left: auto; }
