@@ -122,7 +122,9 @@ jobs:
           nohup uvicorn linkhop.main:app --host 127.0.0.1 --port 8080 \
             > uvicorn.log 2>&1 < /dev/null &
           disown
-          if ! npx --yes wait-on -t 60000 http://127.0.0.1:8080/api/v1/services; then
+          # http-get:// erzwingt GET. Mit plain http:// schickt wait-on HEAD,
+          # was FastAPI mit 405 beantwortet — wait-on sieht dann nie 2xx.
+          if ! npx --yes wait-on -t 60000 http-get://127.0.0.1:8080/api/v1/services; then
             echo "::group::uvicorn.log"
             cat uvicorn.log || true
             echo "::endgroup::"
@@ -136,7 +138,7 @@ jobs:
 
       - name: Wait for frontend
         run: |
-          if ! npx --yes wait-on -t 60000 http://127.0.0.1:5173; then
+          if ! npx --yes wait-on -t 60000 http-get://127.0.0.1:5173; then
             echo "::group::vite.log"
             cat vite.log || true
             echo "::endgroup::"
