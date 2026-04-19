@@ -1012,6 +1012,8 @@ import type { ServiceInfo } from '$lib/api/types';
 export const services = writable<Record<string, ServiceInfo>>({});
 ```
 
+Hinweis: Der Store speichert einen Record (`id → ServiceInfo`), weil Consumer (Task 6 `ServiceItem`) per Service-ID zugreifen. Das Backend liefert ein Array — die Array→Record-Umwandlung passiert in Task 5 beim `/services`-Load.
+
 `frontend/src/lib/stores/services.test.ts`:
 
 ```ts
@@ -1024,7 +1026,9 @@ describe('services store', () => {
     expect(get(services)).toEqual({});
   });
   it('can be set', () => {
-    services.set({ spotify: { name: 'Spotify', capabilities: ['track'] } });
+    services.set({
+      spotify: { id: 'spotify', name: 'Spotify', capabilities: ['track'] }
+    });
     expect(get(services).spotify.name).toBe('Spotify');
   });
 });
@@ -1104,7 +1108,8 @@ git commit -m "feat(frontend): history store with dedupe/cap and services store"
   onMount(async () => {
     try {
       const res = await fetchServices();
-      servicesStore.set(res.services ?? {});
+      const map = Object.fromEntries(res.services.map((s) => [s.id, s]));
+      servicesStore.set(map);
     } catch {
       // Services-Load ist Best-Effort: bei Fehler bleibt die Map leer,
       // ServiceItem fällt auf Service-ID als Display-Name zurück.
