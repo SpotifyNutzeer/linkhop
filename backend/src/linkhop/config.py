@@ -16,6 +16,9 @@ class Settings(BaseSettings):
         env_prefix="LINKHOP_",
         case_sensitive=False,
         populate_by_name=True,
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     database_url: str = "postgresql+asyncpg://linkhop:linkhop@localhost:5432/linkhop"
