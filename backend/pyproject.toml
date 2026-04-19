@@ -54,3 +54,14 @@ extend-exclude = ["alembic/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "N", "SIM", "RUF"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI-Patterns: Depends/Query/... als Default sind Standard-Idiom und keine
+# Mutable-Default-Gefahr. Ohne diese Liste würde ruff B008 jeden Router flaggen.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Header",
+    "fastapi.Path",
+    "fastapi.Body",
+]

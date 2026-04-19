@@ -1,10 +1,10 @@
 import asyncio
 from types import SimpleNamespace
 
+import fakeredis.aioredis
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-import fakeredis.aioredis
 
 from linkhop.cache import Cache
 from linkhop.config import Settings
@@ -17,7 +17,9 @@ from linkhop.ratelimit import RateLimiter
 class StubAdapter:
     def __init__(self, sid: str, resolve_value=None, search_value=None):
         self.service_id = sid
-        self.capabilities = SimpleNamespace(track=True, album=True, artist=True, supports=lambda t: True)
+        self.capabilities = SimpleNamespace(
+            track=True, album=True, artist=True, supports=lambda t: True,
+        )
         self._resolve_value = resolve_value
         self._search_value = search_value or []
 

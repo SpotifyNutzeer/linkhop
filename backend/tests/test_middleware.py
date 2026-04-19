@@ -63,7 +63,8 @@ def test_anonymous_rate_limited(app_with_limits):
     # überschreibt und die Fixture-Stubs wegwirft.
     client = TestClient(app_with_limits)
     for _ in range(2):
-        assert client.get("/api/v1/convert", params={"url": "https://tidal.com/track/1"}).status_code == 200
+        r = client.get("/api/v1/convert", params={"url": "https://tidal.com/track/1"})
+        assert r.status_code == 200
     resp = client.get("/api/v1/convert", params={"url": "https://tidal.com/track/1"})
     assert resp.status_code == 429
     assert resp.json()["error"]["code"] == "rate_limited"

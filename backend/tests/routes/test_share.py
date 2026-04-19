@@ -20,7 +20,9 @@ from linkhop.ratelimit import RateLimiter
 class StubAdapter:
     def __init__(self, sid: str, resolve_value=None, search_value=None):
         self.service_id = sid
-        self.capabilities = SimpleNamespace(track=True, album=True, artist=True, supports=lambda t: True)
+        self.capabilities = SimpleNamespace(
+            track=True, album=True, artist=True, supports=lambda t: True,
+        )
         self._r = resolve_value
         self._s = search_value or []
 

@@ -5,7 +5,11 @@ from fastapi import APIRouter, Depends, Query, Request
 from linkhop.cache import Cache
 from linkhop.middleware import enforce_rate_limit
 from linkhop.models.api import (
-    CacheInfo, ConvertResponse, ShareInfo, SourceContent, TargetResult,
+    CacheInfo,
+    ConvertResponse,
+    ShareInfo,
+    SourceContent,
+    TargetResult,
 )
 from linkhop.pipeline import Pipeline
 from linkhop.short_id import ShortIdService

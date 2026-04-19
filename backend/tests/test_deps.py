@@ -1,5 +1,4 @@
 import httpx
-import pytest
 
 from linkhop.adapters import DeezerAdapter, SpotifyAdapter
 from linkhop.config import Settings

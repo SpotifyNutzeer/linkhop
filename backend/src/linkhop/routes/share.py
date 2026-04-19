@@ -17,6 +17,10 @@ async def open_share(short_id: str, request: Request, _rl=Depends(enforce_rate_l
         svc = ShortIdService(session)
         row = await svc.lookup(short_id)
         if row is None:
-            raise AppError(code="share_not_found", status=404, message=f"short id not found: {short_id}")
+            raise AppError(
+                code="share_not_found",
+                status=404,
+                message=f"short id not found: {short_id}",
+            )
         source_url = row.source_url
     return await convert_view(request, url=source_url, targets=None, share=False)

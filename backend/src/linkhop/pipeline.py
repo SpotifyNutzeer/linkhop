@@ -39,7 +39,9 @@ class Pipeline:
 
         source = await source_adapter.resolve(parsed)
         if source is None:
-            raise SourceNotFoundError(f"source not found: {parsed.service}/{parsed.type}/{parsed.id}")
+            raise SourceNotFoundError(
+                f"source not found: {parsed.service}/{parsed.type}/{parsed.id}"
+            )
 
         target_ids = [sid for sid in self._adapters if sid != parsed.service]
         type_ = ContentType(parsed.type)

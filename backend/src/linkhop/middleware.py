@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import Header, HTTPException, Request
+from fastapi import Header, Request
 
 from linkhop.api_keys import ApiKeyService
 from linkhop.errors import AppError

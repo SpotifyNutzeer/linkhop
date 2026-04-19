@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import secrets
 import string
 import uuid
@@ -65,10 +66,8 @@ class ApiKeyService:
         if row is None:
             # Run argon2 against a dummy hash anyway so miss and hit take the same
             # wall-clock time — otherwise timing alone confirms which prefixes are live.
-            try:
+            with contextlib.suppress(VerifyMismatchError):
                 _hasher.verify(_DUMMY_HASH, presented)
-            except VerifyMismatchError:
-                pass
             return None
         try:
             _hasher.verify(row.key_hash, presented)
