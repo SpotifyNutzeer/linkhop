@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Request
 
 from linkhop.models.api import ServiceInfo, ServicesResponse
@@ -19,7 +21,7 @@ async def list_services(request: Request) -> ServicesResponse:
     adapters = request.app.state.adapters
     entries = []
     for sid, adapter in adapters.items():
-        caps = []
+        caps: list[Literal["track", "album", "artist"]] = []
         if adapter.capabilities.track:
             caps.append("track")
         if adapter.capabilities.album:

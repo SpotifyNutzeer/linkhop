@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -20,7 +22,7 @@ async def health(request: Request) -> JSONResponse:
     except Exception:
         pg_ok = False
 
-    status = "ok" if (redis_ok and pg_ok) else "degraded"
+    status: Literal["ok", "degraded"] = "ok" if (redis_ok and pg_ok) else "degraded"
     code = 200 if status == "ok" else 503
     body = HealthResponse(status=status, redis=redis_ok, postgres=pg_ok).model_dump()
     return JSONResponse(status_code=code, content=body)
