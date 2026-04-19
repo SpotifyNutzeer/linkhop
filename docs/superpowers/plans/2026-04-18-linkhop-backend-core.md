@@ -5108,7 +5108,7 @@ git commit -m "feat(backend): json-structured logging"
 - Reviews: Spec PASS (byte-faithful); Quality PASS-WITH-NITS mit 8 Findings.
 - Accept (2): **M2** `test_configure_logging_runs` ohne Assertions → jetzt asserted Handler-Count, Level, Formatter-Klasse. **M3** Formatter-Test deckte exc_info + extra-attrs (`request_id`, `path`, …) nicht ab → zwei zusätzliche Tests für beide Branches inkl. None-Skip.
 - Reject (6): **C1** `root.handlers.clear()` bei Import (Plan-explizit; akut low-risk → Hazard-Note unten). **M1** Modul-Shadowing `linkhop.logging` (Plan-Name; absolute imports schützen). **M4** CLI bypasst JSON-Logging (CLI ist operator-facing `click.echo`; Plan hat es nicht spezifiziert). **L1** `timezone.utc` vs `UTC` (Plan-Snippet-Treue, Null-Semantik). **L2** `ensure_ascii=False` ist fine (Reviewer selbst). **Q1** Idempotency-Guard (Call läuft effektiv einmal pro App; Guard = Dead-Code).
-- Gesamt-Ergebnis: 157/157 Tests (155 + 4 neue − 2 alte), 167/175 Findings rejected, 2 weiche Accepts als Test-Stärkung umgesetzt.
+- Gesamt-Ergebnis: 157/157 Tests (155 + 4 neue − 2 alte). Task 24 lokal: 6/8 rejected, 2/8 accepted. Kumulativ seit Task 22: 97/175 rejected.
 
 **Hazard-Note für C1:** `configure_logging()` ruft `root.handlers.clear()`
 auf und läuft transitiv bei jedem `import linkhop.main` (da `app =
