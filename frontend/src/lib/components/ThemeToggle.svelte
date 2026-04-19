@@ -25,7 +25,7 @@
     border-radius: 6px;
     color: var(--text);
     cursor: pointer;
-    font-size: 1.2rem;
+    font-size: 0.9rem;
     padding: 0.4rem 0.6rem;
   }
   .theme-toggle:hover { background: var(--bg-surface); }
