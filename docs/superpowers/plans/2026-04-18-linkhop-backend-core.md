@@ -5270,7 +5270,7 @@ git commit -m "feat(backend): Dockerfile + docker-compose for local dev"
 - Create: `backend/tests/integration/test_real_spotify_deezer.py`
 - Modify: `backend/pyproject.toml`
 
-- [ ] **Step 26.1: Integration-Test schreiben — `tests/integration/test_real_spotify_deezer.py`**
+- [x] **Step 26.1: Integration-Test schreiben — `tests/integration/test_real_spotify_deezer.py`**
 
 ```python
 import os
@@ -5318,7 +5318,7 @@ async def test_deezer_to_spotify_via_isrc(clients):
     assert any(h.match == "isrc" for h in hits)
 ```
 
-- [ ] **Step 26.2: pytest-Marker in `pyproject.toml` ergänzen**
+- [x] **Step 26.2: pytest-Marker in `pyproject.toml` ergänzen**
 
 In `[tool.pytest.ini_options]` einfügen:
 
@@ -5326,7 +5326,7 @@ In `[tool.pytest.ini_options]` einfügen:
 markers = ["integration: real API calls; enable with LINKHOP_LIVE_TESTS=1"]
 ```
 
-- [ ] **Step 26.3: Tests sollten per Default SKIP sein**
+- [x] **Step 26.3: Tests sollten per Default SKIP sein**
 
 ```bash
 cd backend && pytest tests/integration/ -v
@@ -5334,12 +5334,31 @@ cd backend && pytest tests/integration/ -v
 
 Expected: 2 `skipped`.
 
-- [ ] **Step 26.4: Commit**
+- [x] **Step 26.4: Commit**
 
 ```bash
 git add backend/
 git commit -m "test(backend): optional live integration tests for Spotify/Deezer"
 ```
+
+**Post-Impl-Bilanz (2026-04-19):**
+- Implementer: 1 neue Datei + 1 pyproject-Zeile, 2 skipped wie erwartet,
+  157/157 + 2 skipped in der Gesamt-Suite.
+- Reviews: Spec PASS (keine Findings). Quality PASS-WITH-NITS, 7 Findings.
+- Accept (3): **M1** `pytestmark = [pytest.mark.integration, skipif(...)]` —
+  ohne Marker-Application wäre die pyproject-Registrierung dead code und
+  `pytest -m integration` matched nichts. Beide Gates jetzt aktiv.
+  **M2** Track-ID-Kommentare ("stable, swap if 404"). **M3** `assert
+  source.isrc` als Precondition — ohne das verschweigt der Test die Root-
+  Cause, wenn Spotify/Deezer keine ISRC-Payload liefern.
+- Reject (4): **L1** `os.environ[…]` → `KeyError` (die Fehlermeldung nennt
+  die fehlende Variable präzise; `pytest.skip`-Wrapper wäre over-engineered
+  für optionalen Live-Test). **L2** Timeout 15 s → 20-30 s (spekulativ,
+  nicht empirisch belegt). **L3** `@pytest_asyncio.fixture` (Plan-explizit;
+  pytest-asyncio-2-Upgrade wäre eigener Task). **L4** Session-scoped
+  adapter fürs Token-Caching (2-Test-Suite, Null-Aufwand-Opt).
+- Gesamt-Ergebnis: 157 passed + 2 skipped. Task 26 lokal: 4/7 rejected,
+  3/7 accepted. Kumulativ seit Task 22: 106/196 rejected.
 
 ---
 
