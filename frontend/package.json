@@ -9,8 +9,6 @@
   "packageManager": "pnpm@10.33.0",
   "scripts": {
     "gen:api": "openapi-typescript ../backend/openapi.json -o src/lib/api/schema.d.ts",
-    "predev": "pnpm gen:api",
-    "prebuild": "pnpm gen:api",
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",

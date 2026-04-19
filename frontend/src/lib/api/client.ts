@@ -16,7 +16,7 @@ async function request<T>(path: string, opts?: { sourceUrl?: string; signal?: Ab
   try {
     res = await fetch(path, { signal: opts?.signal });
   } catch (e) {
-    if (e instanceof DOMException && e.name === 'AbortError') throw e;
+    if ((e as { name?: string } | null)?.name === 'AbortError') throw e;
     throw new ApiError('offline', 0, 'Keine Verbindung zum Server', opts?.sourceUrl);
   }
   if (!res.ok) {

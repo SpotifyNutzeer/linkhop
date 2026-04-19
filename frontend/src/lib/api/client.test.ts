@@ -1,7 +1,9 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
 import { convert, lookup, services, ApiError } from './client';
+
+const CACHE_MISS = { hit: false, ttl_seconds: 0 };
 
 const server = setupServer();
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
@@ -14,11 +16,16 @@ describe('api client', () => {
       http.get('*/api/v1/convert', ({ request }) => {
         const url = new URL(request.url);
         expect(url.searchParams.get('url')).toBe('https://example.com/track/1');
-        return HttpResponse.json({ source: { service: 'tidal' }, targets: {} });
+        return HttpResponse.json({
+          source: { service: 'tidal' },
+          targets: {},
+          cache: CACHE_MISS
+        });
       })
     );
     const res = await convert('https://example.com/track/1');
     expect(res.source.service).toBe('tidal');
+    expect(res.cache.hit).toBe(false);
   });
 
   it('convert throws ApiError with mapped code on 400', async () => {
@@ -44,16 +51,32 @@ describe('api client', () => {
       http.get('*/api/v1/convert', ({ request }) => {
         const url = new URL(request.url);
         expect(url.searchParams.get('share')).toBe('true');
-        return HttpResponse.json({ source: {}, targets: {}, share: { id: 'ab3x9k' } });
+        return HttpResponse.json({
+          source: {},
+          targets: {},
+          cache: CACHE_MISS,
+          share: { id: 'ab3x9k' }
+        });
       })
     );
     await convert('https://x', { share: true });
   });
 
+  it('convert propagates AbortError without wrapping', async () => {
+    const abort = new DOMException('Aborted', 'AbortError');
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(abort);
+    await expect(convert('https://x')).rejects.toMatchObject({ name: 'AbortError' });
+    fetchSpy.mockRestore();
+  });
+
   it('lookup GETs /c/<id>', async () => {
     server.use(
       http.get('*/api/v1/c/ab3x9k', () =>
-        HttpResponse.json({ source: { service: 'spotify' }, targets: {} })
+        HttpResponse.json({
+          source: { service: 'spotify' },
+          targets: {},
+          cache: { hit: true, ttl_seconds: 300 }
+        })
       )
     );
     const res = await lookup('ab3x9k');
