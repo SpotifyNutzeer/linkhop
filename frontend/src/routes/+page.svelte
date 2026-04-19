@@ -83,7 +83,9 @@
   {#if loading}
     <Skeleton />
   {:else if error}
-    <ErrorPanel {error} />
+    {#key error}
+      <ErrorPanel {error} />
+    {/key}
   {:else if result}
     <ResultCard {result}>
       <svelte:fragment slot="share">

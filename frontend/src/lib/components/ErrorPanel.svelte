@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { ApiError, type ApiErrorCode } from '$lib/api/types';
 
   export let error: ApiError;
@@ -13,6 +14,17 @@
   };
 
   let copied = false;
+  let copyFailed = false;
+  let copyTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function scheduleReset() {
+    if (copyTimer) clearTimeout(copyTimer);
+    copyTimer = setTimeout(() => {
+      copied = false;
+      copyFailed = false;
+      copyTimer = null;
+    }, 1500);
+  }
 
   async function copyDebug() {
     const ts = new Date().toISOString();
@@ -20,19 +32,36 @@
       `${error.code}: ${error.message}\n` +
       `URL: ${error.sourceUrl ?? '-'}\n` +
       `Zeit: ${ts}`;
-    await navigator.clipboard.writeText(text);
-    copied = true;
-    setTimeout(() => (copied = false), 1500);
+    try {
+      await navigator.clipboard.writeText(text);
+      copied = true;
+      copyFailed = false;
+      scheduleReset();
+    } catch {
+      copyFailed = true;
+      copied = false;
+      scheduleReset();
+    }
   }
+
+  onDestroy(() => {
+    if (copyTimer) clearTimeout(copyTimer);
+  });
 </script>
 
 <section class="panel" role="alert">
   <h3>{messages[error.code]}</h3>
-  {#if error.status === 400 && error.message && error.message !== messages[error.code]}
+  {#if error.status === 400 && error.message}
     <p class="detail">{error.message}</p>
   {/if}
   <button type="button" class="debug" on:click={copyDebug}>
-    {copied ? 'Kopiert ✓' : 'Debug-Info kopieren'}
+    {#if copyFailed}
+      Kopieren fehlgeschlagen
+    {:else if copied}
+      Kopiert ✓
+    {:else}
+      Debug-Info kopieren
+    {/if}
   </button>
 </section>
 
