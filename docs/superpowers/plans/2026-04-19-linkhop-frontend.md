@@ -106,6 +106,7 @@ pnpm init
   "private": true,
   "type": "module",
   "engines": { "node": ">=22" },
+  "packageManager": "pnpm@10.33.0",
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
@@ -119,7 +120,7 @@ pnpm init
     "@sveltejs/kit": "^2.5.0",
     "@sveltejs/vite-plugin-svelte": "^3.0.0",
     "@testing-library/jest-dom": "^6.4.0",
-    "@testing-library/svelte": "^5.2.0",
+    "@testing-library/svelte": "^4.0.0",
     "@testing-library/user-event": "^14.5.0",
     "jsdom": "^24.0.0",
     "svelte": "^4.2.0",
