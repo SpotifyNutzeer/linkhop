@@ -5364,39 +5364,23 @@ git commit -m "test(backend): optional live integration tests for Spotify/Deezer
 
 ## Task 27: Full-Suite + Coverage-Check
 
-- [ ] **Step 27.1: Kompletter Test-Lauf mit Coverage**
+- [x] **Step 27.1: Kompletter Test-Lauf mit Coverage** — 157 passed, 2 skipped (Live-Tests), **97 %** Coverage (Target 85 %).
 
-```bash
-cd backend && pytest --cov=linkhop --cov-report=term-missing -v
-```
+- [x] **Step 27.2: Ruff-Lint** — 16 Findings initial, 8 via `--fix` (RUF022, UP017, F401, I001), 8 manuell (SIM105→`contextlib.suppress`, 6× E501 umgebrochen, 2× B008 als FastAPI-Idiom in `pyproject.toml` → `[tool.ruff.lint.flake8-bugbear] extend-immutable-calls`).
 
-Expected:
-- Alle Tests grün (~50-60 Tests)
-- Coverage ≥ 85 % für `linkhop/` gesamt
-- Fehlende Zeilen: hauptsächlich Fehlerpfade im Adapter, Lifespan-Code
+- [x] **Step 27.3: Mypy** — 4 Findings, 2 fixed (`services.py`, `health.py` → explizite `Literal`-Typen für `caps` und `status`). 2 verbleibend als Stub-Lücken ohne Runtime-Relevanz:
+  - `cache.py:29` — `redis.asyncio.ping()`-Stub als `Awaitable[bool] | bool`.
+  - `api_keys.py:86` — SQLAlchemy `Result.rowcount` nicht in Stubs. Existiert zur Laufzeit, Test `test_revoke_returns_zero_when_no_match` beweist das.
+  Fix würde `typing.cast` erfordern; Plan erlaubt "best-effort, non-blocking" — beide akzeptiert.
 
-- [ ] **Step 27.2: Ruff-Lint**
+- [x] **Step 27.4: Final-Commit** — durchgeführt.
 
-```bash
-cd backend && ruff check .
-```
+### Post-Impl-Bilanz (Task 27)
 
-Expected: keine Issues.
-
-- [ ] **Step 27.3: Mypy (best effort)**
-
-```bash
-cd backend && mypy src/linkhop --ignore-missing-imports
-```
-
-Issues aufschreiben, aber nicht blockierend.
-
-- [ ] **Step 27.4: Final-Commit**
-
-```bash
-git add backend/
-git commit --allow-empty -m "chore(backend): plan A complete — backend core with spotify/deezer"
-```
+**Lokal:** 4 Commits (ruff-fixes, literal-types, plan-sync, chore).
+**Kumulativ:** 175/175 Plan-Tasks abgeschlossen, 97/175 Review-Findings akzeptiert.
+**Test-Inventar:** 157 passed + 2 skipped (Live), 97 % line-coverage.
+**Technical Debt (explizit):** 2 mypy-Stub-Lücken in `cache.py`/`api_keys.py` (non-blocking, siehe Step 27.3).
 
 ---
 
