@@ -4,6 +4,13 @@
     <meta charset="utf-8" />
     <link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script>
+(function(){
+  var p=localStorage.getItem('linkhop:theme')||'auto';
+  var d=p==='dark'||(p==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.setAttribute('data-theme',d?'dark':'light');
+})();
+</script>
     <title>linkhop</title>
     %sveltekit.head%
   </head>
