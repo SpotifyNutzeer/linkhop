@@ -380,7 +380,15 @@ Expected: alle grün.
 - Create: `backend/tests/fixtures/tidal_search_metadata.json`
 - Modify: `backend/tests/adapters/test_tidal.py`
 
-- [ ] **Step 3.0: Tidal-Search-API-Recherche (Pflicht vor Code)**
+- [x] **Step 3.0: Tidal-Search-API-Recherche (Pflicht vor Code)**
+
+  **Done 2026-04-19.** Verifiziert gegen `tidal-sdk-web/packages/api/src/allAPI.generated.ts`. Findings:
+  - ISRC-Filter **existiert**: `GET /tracks?filter[isrc]={isrc}&countryCode=DE` → `data[]` sind volle Track-Resources. Kein Metadata-Fallback für ISRC-Lookup nötig.
+  - UPC-Filter analog: `GET /albums?filter[barcodeId]={upc}&countryCode=DE`.
+  - Metadata-Search: `GET /searchResults/{URL-encoded-query}/relationships/{tracks|albums|artists}?countryCode=DE`. Query ist **Pfad-Segment**, nicht Query-Param. `data[]` enthält Resource-Identifier, `included[]` Full-Resources — aber wir **nutzen nur `data[]`** für URL+ID, Matcher resolved separat (siehe Commit `19b6998`).
+  - Kein `page[limit]` in der Spec — cursor-basiert. Client-seitiges Slicing auf 3 dokumentiert inklusive Recall-Trade-off (`tidal.py:41–53`).
+
+  Output: Header-Kommentar in `tidal.py` um 10 Zeilen Search-Doku erweitert.
 
 Analog zu Step 2.0 — Step 2.0 hat nur Resolve-Endpoints verifiziert, Search blieb offen. Der Implementer **muss vor dem Schreiben von Code** die Search-Endpoints gegen `tidal-music/tidal-sdk-web` (oder die OpenAPI-Spec) verifizieren, weil die drei bisher als Annahmen gehandelten Pfade sich gegenseitig ausschließen.
 
@@ -405,7 +413,7 @@ Assumptions (zu verifizieren):
 
 Wenn die Tidal-API keinen direkten ISRC-Filter hat, muss das **als Finding** dokumentiert werden: ISRC-Lookup wird dann per Metadata-Search + ISRC-Abgleich in `included[]` gebaut (confidence=1.0, wenn `included[].attributes.isrc == meta.isrc`). Diese Design-Entscheidung **ist Teil von Step 3.0**, nicht von Step 3.1.
 
-- [ ] **Step 3.1: `search()`-Methode (ISRC/UPC-First, Metadata-Fallback)**
+- [x] **Step 3.1: `search()`-Methode (ISRC/UPC-First, Metadata-Fallback)**
 
 Analog zu `SpotifyAdapter.search()`, aber mit Tidal-OpenAPI-Pfaden aus Step 2.0:
 
@@ -426,7 +434,7 @@ Analog zu `SpotifyAdapter.search()`, aber mit Tidal-OpenAPI-Pfaden aus Step 2.0:
 
 Implementation der drei `_search_*`-Methoden nach verifizierter Shape aus Step 2.0. Wichtig: `confidence=1.0 if match == "isrc" else 0.0` (Matcher-Pipeline weist den finalen Score zu, Adapter liefert nur Kandidaten).
 
-- [ ] **Step 3.2: Metadata-Query-Konstruktion**
+- [x] **Step 3.2: Metadata-Query-Konstruktion**
 
 ```python
     async def _search_metadata(
@@ -441,12 +449,16 @@ Implementation der drei `_search_*`-Methoden nach verifizierter Shape aus Step 2
 
 Reason-Kommentar ist kein Schmuck: im Review wurde in Plan A die identische Frage "warum 'Artist Title' und nicht 'Title Artist'" gestellt — Antwort gehört in den Code, nicht in den PR-Thread.
 
-- [ ] **Step 3.3: Fixtures**
+- [x] **Step 3.3: Fixtures**
+
+  **Deviation vom Plan:** Zusätzlich zu `tidal_search_isrc.json` + `tidal_search_metadata.json` wurden `tidal_search_upc.json` + `tidal_search_artists.json` angelegt, damit UPC- und Artist-Pfade deterministisch testbar sind (sonst wäre Inline-JSON im Test nötig). Begründet durch Scope-Vollständigkeit, nicht durch Plan-Abweichung in der Logik.
 
 - `tests/fixtures/tidal_search_isrc.json` — Search-Response für ISRC-Treffer (1+ Kandidaten)
 - `tests/fixtures/tidal_search_metadata.json` — Search-Response für Metadata-Query (2–3 Kandidaten)
 
-- [ ] **Step 3.4: Unit-Tests ergänzen**
+- [x] **Step 3.4: Unit-Tests ergänzen**
+
+  **Deviation vom Plan:** Plan-Snippet (Zeile 438) forderte `"{artist} {title}".strip()` für alle Metadata-Pfade. Für `ContentType.ARTIST` nutzt der Adapter stattdessen `meta.title.strip()`, weil `ResolvedContent` für Artists den Namen in `title` ablegt (`artists=(name,)` wäre Duplikat → `"Kavinsky Kavinsky"`-Query suboptimal). Konsistent mit `SpotifyAdapter._search_artists` (`spotify.py:131–133`).
 
 In `tests/adapters/test_tidal.py` — **gleiches Pattern wie Task 2.6** (Fidelity-Pflicht):
 `@respx.mock`-Decorator pro Test, inline `respx.post/get().respond(json=fix(...))`, single-adapter-Fixture wie schon existent, Token-Mock pro Test inline:
@@ -489,19 +501,26 @@ Plus: analoger Test für `ContentType.ALBUM` mit `meta.upc` (→ `match == "upc"
 
 **Warum `confidence=1.0` bei ISRC trotz "Matcher setzt final"?** — ISRC/UPC sind global eindeutige Identifier; ein Adapter-Hit bedeutet definitionsgemäß denselben Track. Der Matcher nutzt das als Fast-Path ohne weiteres Scoring. Bei Metadata-Hits hat der Adapter keine Confidence-Info → `0.0`, Matcher berechnet aus Title/Artist/Duration.
 
-- [ ] **Step 3.5: Tests laufen lassen**
+- [x] **Step 3.5: Tests laufen lassen**
 
 ```bash
 cd backend && pytest -q tests/adapters/test_tidal.py
 ```
 
-- [ ] **Step 3.6: Commit**
+- [x] **Step 3.6: Commit**
 
-```bash
-cd /home/paul/git/linkconverter
-git add backend/src/linkhop/adapters/tidal.py backend/tests/
-git commit -m "feat(backend): tidal adapter search (Plan B Task 3)"
-```
+  **Done 2026-04-19.** Split-Commits (Implementer + parallel Spec+Quality-Review):
+  - `2ad5bbf feat(backend): tidal adapter search (Plan B Task 3)` (implementer)
+  - `19b6998 fix(backend): tidal search — remove unused include= sideload (review Q-M1)`
+  - `9e36deb test(backend): tidal search — wire-format + 5xx coverage (review Q-M2, Q-M3)`
+  - `32f0f23 docs(backend): tidal search — document page-size trade-off (review Q-M4)`
+
+  Review-Bilanz: 4/13 Findings akzeptiert (Q-M1/M2/M3/M4), 9 rejected (hypothetisch, project-wide, oder bereits indirekt getestet). Tests: 15 → **22** in `test_tidal.py`; Full-Suite 172 passed / 2 skipped. Ruff + Mypy clean.
+
+  Offene Items für Task 5 (Live-Tests):
+  - Verifizieren, ob Tidal `filter%5Bisrc%5D` (httpx-Default-Encoding) oder Literal `filter[isrc]` erwartet
+  - Metadata-Query-Pattern `"Artist Title"` gegen echte Ranking-Qualität prüfen
+  - Tidals Default-Page-Size gegen unser client-seitiges `_SEARCH_LIMIT=3` vergleichen
 
 ---
 
