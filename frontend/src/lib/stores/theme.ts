@@ -13,18 +13,14 @@ function readInitial(): Pref {
 
 export const themePref = writable<Pref>(readInitial());
 
-function systemPrefersDark(): boolean {
-  if (typeof matchMedia === 'undefined') return false;
-  return matchMedia('(prefers-color-scheme: dark)').matches;
-}
+const mql =
+  typeof matchMedia !== 'undefined' ? matchMedia('(prefers-color-scheme: dark)') : null;
 
-const systemDark = writable<boolean>(systemPrefersDark());
+const systemDark = writable<boolean>(mql?.matches ?? false);
 
-if (typeof matchMedia !== 'undefined') {
-  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-    systemDark.set(e.matches);
-  });
-}
+mql?.addEventListener('change', (e) => {
+  systemDark.set(e.matches);
+});
 
 export const effectiveTheme = derived<[typeof themePref, typeof systemDark], Effective>(
   [themePref, systemDark],
