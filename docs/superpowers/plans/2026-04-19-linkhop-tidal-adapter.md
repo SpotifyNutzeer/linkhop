@@ -683,9 +683,12 @@ Live-Integrationstests benötigen zusätzlich:
 - `LINKHOP_TIDAL_CLIENT_ID` / `LINKHOP_TIDAL_CLIENT_SECRET` für Tidal-Tests.
 ```
 
-- [ ] **Step 5.5: Live-Smoke lokal (optional, nur wenn Credentials vorhanden)**
-
-  **Pending — User-Entscheidung.** Nicht automatisiert ausführbar (braucht echte Tidal-Dev-App-Creds + Netz). User hat Tidal-Developer-Access laut Task-1-Scope-Gespräch; der Smoke-Run ist sinnvoll nach Plan-B-Abschluss, um die 3 offenen Task-3-Fragen live zu schließen (httpx-Bracket-Encoding, Query-Ranking, Page-Size).
+- [x] **Step 5.5: Live-Smoke lokal (optional, nur wenn Credentials vorhanden)** — 2026-04-19 Tidal-only ad-hoc Smoke durchgeführt (Spotify-Creds noch ausstehend); alle 3 offenen Task-3-Fragen ✅ positiv verifiziert:
+  - **Q1** `filter%5Bisrc%5D`-Encoding akzeptiert (200; httpx-default, `application/vnd.api+json` und literal `[]` liefern alle identisches Ergebnis)
+  - **Q2** `countryCode=DE` liefert nicht-leere Resolve-Response (Weather Report "Crystal", Track 1566)
+  - **Q3** ISRC `USSM10023644` im `attributes.isrc`-Feld gespiegelt
+  - **Nebenbefund 1:** Erster Search-Call warf einmalig 500 (transient, nicht reproduzierbar — kein Adapter-Bug)
+  - **Nebenbefund 2:** Ursprünglich geplante Track-ID `77640617` (Nightcall) liefert 404 in Tidal — Live-Test auf `1566` umgestellt; smoke-Skripte aus `/tmp` gelöscht (nicht committed).
 
 ```bash
 cd backend
@@ -806,4 +809,4 @@ Frontend (React/TypeScript, Catppuccin, Layout C/B) gegen die Backend-API, die n
 - Artist-Query `meta.title` statt `"{artist} {title}"` (Duplikat-Vermeidung)
 - Step 3.0 (Search-API-Recherche) pre-dispatch als Pflicht-Step eingefügt, weil Step 2.0 Search nicht verifiziert hatte
 
-**Offene User-Action:** Task 5.5 Live-Smoke lokal — verifiziert die 3 offenen Task-3-Fragen (httpx `%5B%5D`-Encoding, Query-Ranking, Default-Page-Size). Pending Tidal-Dev-Creds.
+**Offene User-Action:** ~~Task 5.5 Live-Smoke lokal~~ — 2026-04-19 Tidal-only Smoke durchgeführt: httpx-Bracket-Encoding ✅, countryCode=DE ✅, ISRC-Feld ✅. Vollständiger 4-Test-Run gegen `test_real_adapters.py` steht noch aus (braucht zusätzlich Spotify-Creds).
