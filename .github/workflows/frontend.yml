@@ -110,15 +110,21 @@ jobs:
         working-directory: backend
         run: linkhop-admin init-db
 
+      # Hintergrund-Launches müssen stdin schliessen und `disown`, sonst
+      # blockiert bash den Step, bis der Kindprozess endet — auch wenn er
+      # mit `&` im Hintergrund läuft (geerbte FDs halten den Step offen).
       - name: Start backend (uvicorn)
         working-directory: backend
         run: |
           nohup uvicorn linkhop.main:app --host 0.0.0.0 --port 8080 \
-            > uvicorn.log 2>&1 &
+            > uvicorn.log 2>&1 < /dev/null &
+          disown
           npx --yes wait-on http://localhost:8080/api/v1/services
 
       - name: Start frontend dev server
-        run: nohup pnpm dev > vite.log 2>&1 &
+        run: |
+          nohup pnpm dev > vite.log 2>&1 < /dev/null &
+          disown
 
       - name: Wait for frontend
         run: npx --yes wait-on http://localhost:5173
