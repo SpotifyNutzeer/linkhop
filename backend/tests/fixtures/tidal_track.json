@@ -36,6 +36,30 @@
         "numberOfVolumes": 1,
         "popularity": 0.6,
         "mediaTags": []
+      },
+      "relationships": {
+        "coverArt": { "data": [{ "type": "artworks", "id": "cover-1" }] }
+      }
+    },
+    {
+      "id": "cover-1",
+      "type": "artworks",
+      "attributes": {
+        "mediaType": "IMAGE",
+        "files": [
+          {
+            "href": "https://resources.tidal.com/images/outrun/80x80.jpg",
+            "meta": { "width": 80, "height": 80 }
+          },
+          {
+            "href": "https://resources.tidal.com/images/outrun/640x640.jpg",
+            "meta": { "width": 640, "height": 640 }
+          },
+          {
+            "href": "https://resources.tidal.com/images/outrun/1280x1280.jpg",
+            "meta": { "width": 1280, "height": 1280 }
+          }
+        ]
       }
     }
   ]

@@ -40,6 +40,10 @@ async def test_resolve_track(adapter: TidalAdapter):
     assert result.duration_ms == 257_000
     assert result.upc is None
     assert result.url == "https://tidal.com/track/77640617"
+    # Cover-Art stammt beim Track nicht aus dem Track-Objekt, sondern aus dem
+    # eingebetteten Album (`albums.coverArt`-nested-include). Ohne diesen Fix
+    # bleibt artwork leer und das Frontend zeigt den Placeholder.
+    assert result.artwork == "https://resources.tidal.com/images/outrun/640x640.jpg"
 
 
 @respx.mock
@@ -89,7 +93,9 @@ async def test_resolve_sends_country_code(adapter: TidalAdapter):
     await adapter.resolve(ParsedUrl("tidal", "track", "77640617"))
     params = route.calls.last.request.url.params
     assert params["countryCode"] == "DE"
-    assert params["include"] == "artists,albums"
+    # albums.coverArt ist Nested-Include: ohne es liefert Tidal nur das
+    # Album-Objekt im included[], aber nicht die artworks — Cover bleibt leer.
+    assert params["include"] == "artists,albums.coverArt"
 
 
 @respx.mock

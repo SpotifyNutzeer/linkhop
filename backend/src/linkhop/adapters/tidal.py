@@ -116,7 +116,8 @@ class TidalAdapter:
     async def resolve(self, parsed: ParsedUrl) -> ResolvedContent | None:
         if parsed.type == "track":
             data = await self._get(
-                f"/tracks/{parsed.id}", params={"include": "artists,albums"}
+                f"/tracks/{parsed.id}",
+                params={"include": "artists,albums.coverArt"},
             )
             if not data or not data.get("data"):
                 return None
@@ -139,7 +140,7 @@ class TidalAdapter:
                 duration_ms=_iso8601_to_ms(attrs.get("duration")),
                 isrc=attrs.get("isrc"),
                 upc=None,
-                artwork="",
+                artwork=_track_cover_art(rels, included),
             )
         if parsed.type == "album":
             data = await self._get(
@@ -338,6 +339,24 @@ def _first_album_title(
         return None
     title = (inc.get("attributes") or {}).get("title")
     return title if isinstance(title, str) else None
+
+
+def _track_cover_art(
+    rels: dict[str, Any], included: dict[tuple[str, str], dict[str, Any]]
+) -> str:
+    # Tracks haben selbst kein coverArt-Relationship; die Kachel hängt am Album.
+    # albums.coverArt als Nested-Include lädt das Album + sein artworks-Objekt
+    # mit in `included[]`, wir delegieren dann an _pick_cover_art.
+    refs = (rels.get("albums") or {}).get("data") or []
+    for ref in refs:
+        album = included.get(("albums", ref["id"]))
+        if album is None:
+            continue
+        album_rels = album.get("relationships") or {}
+        href = _pick_cover_art(album_rels, included)
+        if href:
+            return href
+    return ""
 
 
 def _pick_cover_art(
