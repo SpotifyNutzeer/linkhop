@@ -712,7 +712,7 @@ git commit -m "test(backend): live integration tests for tidal (Plan B Task 5)"
 **Files:**
 - Modify: `docs/superpowers/plans/2026-04-19-linkhop-tidal-adapter.md` (Plan-Sync)
 
-- [ ] **Step 6.1: Test-Lauf mit Coverage**
+- [x] **Step 6.1: Test-Lauf mit Coverage**
 
 ```bash
 cd backend && pytest --cov=linkhop --cov-report=term-missing -v
@@ -724,7 +724,7 @@ Expected:
 
 Wenn Coverage < 85 %: fehlende Branches in Tidal-Adapter identifizieren und Unit-Tests ergänzen, bis die Schwelle wieder steht.
 
-- [ ] **Step 6.2: Ruff-Lint**
+- [x] **Step 6.2: Ruff-Lint**
 
 ```bash
 cd backend && ruff check .
@@ -732,7 +732,7 @@ cd backend && ruff check .
 
 Expected: clean. Wenn nicht: fixen (analog Plan A Task 27.2).
 
-- [ ] **Step 6.3: Mypy (best effort)**
+- [x] **Step 6.3: Mypy (best effort)**
 
 ```bash
 cd backend && mypy src/linkhop
@@ -740,11 +740,11 @@ cd backend && mypy src/linkhop
 
 Erwartung: die zwei bekannten Stub-Lücken aus Plan A bleiben (cache.py, api_keys.py). Neue Findings am Tidal-Adapter: fixen, falls billig; dokumentieren, falls Stub-Problem.
 
-- [ ] **Step 6.4: Plan-Sync**
+- [x] **Step 6.4: Plan-Sync**
 
 Checkboxen in diesem Plan setzen. Post-Impl-Bilanz am Ende ergänzen (commit-Count, Test-Delta, Coverage).
 
-- [ ] **Step 6.5: Final-Commit**
+- [x] **Step 6.5: Final-Commit**
 
 ```bash
 git add docs/superpowers/plans/2026-04-19-linkhop-tidal-adapter.md
@@ -779,4 +779,31 @@ Frontend (React/TypeScript, Catppuccin, Layout C/B) gegen die Backend-API, die n
 
 ## Post-Impl-Bilanz
 
-_(wird bei Task 6.4 ergänzt)_
+**Abgeschlossen 2026-04-19.**
+
+**Commits (20 in Plan B, exkl. Plan-File selbst):**
+- Task 1 (YT-Music-Cleanup): 2 Commits (inline)
+- Task 2 (Tidal Resolve): 6 Commits — Subagent-Workflow + 7/11 Review-Findings
+- Task 3 (Tidal Search): 6 Commits — Subagent-Workflow + 4/13 Review-Findings
+- Task 4 (Wiring): 3 Commits (inline)
+- Task 5 (Live-Integration): 3 Commits (inline)
+
+**Test-Delta:** Plan-A-Ende hatte 157 Tests. Plan-B-Ende: **175 passed + 4 skipped = 179 total** (+22).
+- +18 Tidal-Unit-Tests (Resolve + Search + Edge-Cases in `test_tidal.py`)
+- +2 Tidal-Deps-Tests in `test_deps.py`
+- +2 Tidal-Live-Integration-Tests (skipped ohne `LINKHOP_LIVE_TESTS=1`)
+- −3 YT-Music-URL-Parser-Cases (Task 1 Cleanup)
+
+**Coverage: 95 %** (Plan A war 97 %, -2 Prozentpunkte durch tidal.py @ 89 %). Über der 85 %-Schwelle; Tidal-Adapter-Coverage könnte in einem Follow-up durch Cover-Art-Edge-Cases + Error-Pfade auf ≥93 % gehoben werden, ist aber keine Regression.
+
+**Ruff:** clean. **Mypy:** weiterhin 2 bekannte Stub-Lücken aus Plan A (`cache.py:29` redis.asyncio.ping, `api_keys.py:86` SQLAlchemy Result.rowcount). Keine neuen Tidal-Findings.
+
+**Review-Bilanz gesamt:** 11/24 Findings akzeptiert (46 %), 13 rejected mit empirischer Begründung (JSON:API-defensive-guards, project-wide Policy, hypothetische Drift, indirekt abgedeckt).
+
+**Plan-Korrekturen aufgefangen:**
+- Tidal-Token-Auth via Form-Body (Plan: Basic-Auth) — verifiziert via SDK-Source
+- Artwork via JSON:API-`artworks`-Resource (Plan: `attributes.imageLinks[]`)
+- Artist-Query `meta.title` statt `"{artist} {title}"` (Duplikat-Vermeidung)
+- Step 3.0 (Search-API-Recherche) pre-dispatch als Pflicht-Step eingefügt, weil Step 2.0 Search nicht verifiziert hatte
+
+**Offene User-Action:** Task 5.5 Live-Smoke lokal — verifiziert die 3 offenen Task-3-Fragen (httpx `%5B%5D`-Encoding, Query-Ranking, Default-Page-Size). Pending Tidal-Dev-Creds.
