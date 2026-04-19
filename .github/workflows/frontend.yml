@@ -1,0 +1,192 @@
+name: frontend
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - 'backend/src/linkhop/**'
+      - '.github/workflows/frontend.yml'
+  push:
+    branches: [main, master]
+  release:
+    types: [published]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm/action-setup@v4 reads the `packageManager` field in
+      # frontend/package.json ("pnpm@10.33.0"), so no explicit version.
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install frontend deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Export backend openapi.json
+        working-directory: backend
+        run: |
+          pip install -e .
+          python -c "from linkhop.main import app; import json; json.dump(app.openapi(), open('openapi.json','w'))"
+
+      - name: Generate API schema
+        run: pnpm gen:api
+
+      - name: Check schema drift
+        run: git diff --exit-code src/lib/api/schema.d.ts
+
+      - name: Type check
+        run: pnpm check
+
+      - name: Unit + component tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: check
+    defaults:
+      run:
+        working-directory: frontend
+    # E2E_TEST_URL lets us swap the happy-path URL if Tidal's public metadata
+    # endpoint flakes in CI. Leave unset to keep the smoke spec's default.
+    env:
+      E2E_BASE_URL: http://localhost:5173
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install frontend deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      # No root-level docker-compose.yml exists; `backend/docker-compose.yml`
+      # only provides Postgres + Redis, so we bring those up via compose and
+      # run the backend itself with uvicorn for fast iteration.
+      - name: Start Postgres + Redis
+        working-directory: backend
+        run: docker compose up -d --wait
+
+      - name: Install backend
+        working-directory: backend
+        run: pip install -e .
+
+      - name: Initialise backend schema
+        working-directory: backend
+        run: linkhop-admin init-db
+
+      - name: Start backend (uvicorn)
+        working-directory: backend
+        run: |
+          nohup uvicorn linkhop.main:app --host 0.0.0.0 --port 8080 \
+            > uvicorn.log 2>&1 &
+          npx --yes wait-on http://localhost:8080/api/v1/services
+
+      - name: Start frontend dev server
+        run: nohup pnpm dev > vite.log 2>&1 &
+
+      - name: Wait for frontend
+        run: npx --yes wait-on http://localhost:5173
+
+      - name: Run E2E
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+
+      - name: Upload backend log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-log
+          path: backend/uvicorn.log
+
+  image:
+    runs-on: ubuntu-latest
+    needs: check
+    if: github.event_name == 'release'
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      # Needed to export openapi.json before generating the TS client that
+      # ships in the image build context.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Export backend openapi.json
+        working-directory: backend
+        run: |
+          pip install -e .
+          python -c "from linkhop.main import app; import json; json.dump(app.openapi(), open('openapi.json','w'))"
+
+      - name: Generate schema for image build
+        working-directory: frontend
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm gen:api
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: frontend
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/linkhop-frontend:${{ github.event.release.tag_name }}
+            ghcr.io/${{ github.repository_owner }}/linkhop-frontend:${{ github.sha }}
