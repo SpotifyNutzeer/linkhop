@@ -20,12 +20,19 @@ async function request<T>(path: string, opts?: { sourceUrl?: string; signal?: Ab
     throw new ApiError('offline', 0, 'Keine Verbindung zum Server', opts?.sourceUrl);
   }
   if (!res.ok) {
-    let body: { code?: string; message?: string } = {};
-    try { body = await res.json(); } catch { /* body leer / kein JSON */ }
+    let code: string | undefined;
+    let message: string | undefined;
+    try {
+      const json = await res.json();
+      // Backend wraps errors as {"error": {"code": ..., "message": ...}}
+      const err = json.error ?? json;
+      code = err.code;
+      message = err.message;
+    } catch { /* body leer / kein JSON */ }
     throw new ApiError(
-      mapStatus(res.status, body.code),
+      mapStatus(res.status, code),
       res.status,
-      body.message ?? res.statusText,
+      message ?? res.statusText,
       opts?.sourceUrl
     );
   }

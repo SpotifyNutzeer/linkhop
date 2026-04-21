@@ -1,8 +1,10 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-// Override in CI when Tidal's public endpoint is flaky or blocked.
-const TEST_URL = process.env.E2E_TEST_URL ?? 'https://tidal.com/track/1566';
+// Deezer needs no API credentials, so this works in CI without secrets.
+// Override via E2E_TEST_URL to test against Spotify/Tidal when credentials
+// are available.
+const TEST_URL = process.env.E2E_TEST_URL ?? 'https://www.deezer.com/track/3135556';
 
 test.describe('linkhop smoke', () => {
   test('home renders and theme toggle persists', async ({ page }) => {
@@ -23,7 +25,7 @@ test.describe('linkhop smoke', () => {
 
   test('happy-path convert shows result', async ({ page }) => {
     await page.goto(`/?url=${encodeURIComponent(TEST_URL)}`);
-    await expect(page.getByRole('link', { name: /öffnen/i }).first()).toBeVisible({
+    await expect(page.locator('a.link[target="_blank"]').first()).toBeVisible({
       timeout: 30_000
     });
   });
@@ -37,7 +39,7 @@ test.describe('linkhop smoke', () => {
   test('history persists across reload', async ({ page, context }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     await page.goto(`/?url=${encodeURIComponent(TEST_URL)}`);
-    await expect(page.getByRole('link', { name: /öffnen/i }).first()).toBeVisible({
+    await expect(page.locator('a.link[target="_blank"]').first()).toBeVisible({
       timeout: 30_000
     });
 
@@ -48,7 +50,7 @@ test.describe('linkhop smoke', () => {
 
   test('share-button creates short-link that loads', async ({ page }) => {
     await page.goto(`/?url=${encodeURIComponent(TEST_URL)}`);
-    await expect(page.getByRole('link', { name: /öffnen/i }).first()).toBeVisible({
+    await expect(page.locator('a.link[target="_blank"]').first()).toBeVisible({
       timeout: 30_000
     });
 
@@ -59,7 +61,7 @@ test.describe('linkhop smoke', () => {
     const shortPath = new URL(shortUrl).pathname;
 
     await page.goto(shortPath);
-    await expect(page.getByRole('link', { name: /öffnen/i }).first()).toBeVisible({
+    await expect(page.locator('a.link[target="_blank"]').first()).toBeVisible({
       timeout: 15_000
     });
   });
