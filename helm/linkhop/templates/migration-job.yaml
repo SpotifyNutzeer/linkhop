@@ -30,8 +30,5 @@ spec:
           workingDir: /app
           env:
             - name: LINKHOP_DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "linkhop.secretName" . }}
-                  key: LINKHOP_DATABASE_URL
+              value: {{ required "config.databaseUrl is required" .Values.config.databaseUrl | quote }}
 {{- end }}
