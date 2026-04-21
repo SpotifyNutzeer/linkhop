@@ -218,4 +218,4 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/linkhop-frontend:${{ github.event.release.tag_name }}
-            ghcr.io/${{ github.repository_owner }}/linkhop-frontend:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/linkhop-frontend:latest
