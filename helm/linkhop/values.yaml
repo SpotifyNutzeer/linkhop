@@ -1,0 +1,91 @@
+# -- Backend
+backend:
+  image:
+    repository: ghcr.io/OWNER/linkhop-backend
+    # -- Defaults to Chart.appVersion
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  # -- Passed as LINKHOP_FORWARDED_ALLOW_IPS to uvicorn.
+  # Set to "*" so the Ingress controller's X-Forwarded-For is trusted.
+  forwardedAllowIps: "*"
+
+# -- Frontend
+frontend:
+  image:
+    repository: ghcr.io/OWNER/linkhop-frontend
+    # -- Defaults to Chart.appVersion
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# -- Ingress
+ingress:
+  enabled: true
+  # -- Set to your cluster's ingress class (e.g. "traefik", "nginx")
+  className: ""
+  # -- Hostname for the Ingress rule
+  host: ""
+  annotations: {}
+  tls:
+    enabled: false
+    # -- Name of TLS Secret (cert-manager can create this automatically)
+    secretName: ""
+
+# -- Application config (non-sensitive, set as plain env vars)
+config:
+  # -- PostgreSQL connection string (required)
+  databaseUrl: ""
+  logLevel: INFO
+  corsAllowOrigins: "*"
+  rateAnonymous: 20
+  rateWithKey: 300
+  cacheTtl: 604800
+  enableSpotify: true
+  enableDeezer: true
+  enableTidal: true
+
+# -- Sensitive credentials
+secrets:
+  spotifyClientId: ""
+  spotifyClientSecret: ""
+  tidalClientId: ""
+  tidalClientSecret: ""
+  # -- Use an existing Secret instead of creating one.
+  # The Secret must contain keys: LINKHOP_DATABASE_URL, LINKHOP_REDIS_URL,
+  # LINKHOP_SPOTIFY_CLIENT_ID, LINKHOP_SPOTIFY_CLIENT_SECRET,
+  # LINKHOP_TIDAL_CLIENT_ID, LINKHOP_TIDAL_CLIENT_SECRET
+  existingSecret: ""
+
+# -- Alembic database migrations (pre-install/pre-upgrade hook)
+migration:
+  enabled: true
+
+# -- External Redis (only used when redis.enabled=false)
+externalRedis:
+  # -- Redis connection URL (e.g. redis://my-redis:6379/0)
+  url: ""
+
+# -- Bitnami Redis subchart
+# @default -- standalone, no auth, no persistence (cache-only)
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: false
+
+# -- Pull secrets for private container registries
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""

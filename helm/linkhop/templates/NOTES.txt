@@ -1,0 +1,25 @@
+LinkHop has been deployed!
+
+{{- if .Values.ingress.enabled }}
+Application URL:
+  {{- if .Values.ingress.tls.enabled }}
+  https://{{ .Values.ingress.host }}
+  {{- else }}
+  http://{{ .Values.ingress.host }}
+  {{- end }}
+{{- else }}
+No Ingress configured. Access via port-forward:
+  kubectl port-forward svc/{{ include "linkhop.fullname" . }}-frontend 8080:80
+{{- end }}
+
+{{- if not .Values.config.databaseUrl }}
+
+WARNING: config.databaseUrl is not set. The backend will fail to start.
+Set it via --set config.databaseUrl=postgresql+asyncpg://...
+{{- end }}
+
+{{- if .Values.secrets.existingSecret }}
+
+Using existing Secret: {{ .Values.secrets.existingSecret }}
+Ensure it contains the required keys (see values.yaml for the list).
+{{- end }}
