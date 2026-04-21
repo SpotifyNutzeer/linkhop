@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "linkhop.fullname" . }}-backend
+  labels:
+    {{- include "linkhop.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  replicas: {{ .Values.backend.replicas }}
+  selector:
+    matchLabels:
+      {{- include "linkhop.backendSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "linkhop.backendSelectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - secretRef:
+                name: {{ include "linkhop.secretName" . }}
+          env:
+            - name: LINKHOP_LOG_LEVEL
+              value: {{ .Values.config.logLevel | quote }}
+            - name: LINKHOP_CORS_ALLOW_ORIGINS
+              value: {{ .Values.config.corsAllowOrigins | quote }}
+            - name: LINKHOP_RATE_ANONYMOUS
+              value: {{ .Values.config.rateAnonymous | quote }}
+            - name: LINKHOP_RATE_WITH_KEY
+              value: {{ .Values.config.rateWithKey | quote }}
+            - name: LINKHOP_CACHE_TTL
+              value: {{ .Values.config.cacheTtl | quote }}
+            - name: LINKHOP_ENABLE_SPOTIFY
+              value: {{ .Values.config.enableSpotify | quote }}
+            - name: LINKHOP_ENABLE_DEEZER
+              value: {{ .Values.config.enableDeezer | quote }}
+            - name: LINKHOP_ENABLE_TIDAL
+              value: {{ .Values.config.enableTidal | quote }}
+            - name: LINKHOP_FORWARDED_ALLOW_IPS
+              value: {{ .Values.backend.forwardedAllowIps | quote }}
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          {{- with .Values.backend.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.backend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.backend.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.backend.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
