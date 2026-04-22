@@ -19,6 +19,12 @@ test.beforeEach(async ({ page }) => {
   page.on('requestfailed', (req) => {
     console.log(`[browser:requestfailed] ${req.method()} ${req.url()} → ${req.failure()?.errorText}`);
   });
+  // Alle non-2xx Responses loggen — die Browser-Console zeigt nur "403" ohne URL.
+  page.on('response', (res) => {
+    if (res.status() >= 400) {
+      console.log(`[response:${res.status()}] ${res.request().method()} ${res.url()}`);
+    }
+  });
 });
 
 test.describe('linkhop smoke', () => {
