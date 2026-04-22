@@ -26,7 +26,9 @@ class Cache:
 
     async def ping(self) -> bool:
         try:
-            return await self._redis.ping()
+            # redis-py typed `ping()` als Awaitable[bool] | bool (sync/async
+            # Stub-Union). Im asyncio-Client ist es immer Awaitable.
+            return await self._redis.ping()  # type: ignore[misc]
         except (redis.RedisError, OSError):
             return False
 

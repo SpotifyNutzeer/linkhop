@@ -83,7 +83,9 @@ class ApiKeyService:
             update(ApiKey).where(ApiKey.id == key_id).values(revoked_at=datetime.now(tz=UTC))
         )
         await self._s.commit()
-        return result.rowcount or 0
+        # execute() ist statisch Result[Any], zur Laufzeit für DML aber
+        # CursorResult — rowcount existiert, mypy kann es nicht verifizieren.
+        return result.rowcount or 0  # type: ignore[attr-defined]
 
     async def list_all(self) -> list[ApiKey]:
         result = await self._s.scalars(select(ApiKey).order_by(ApiKey.created_at))
