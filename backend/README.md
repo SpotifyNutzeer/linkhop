@@ -34,7 +34,7 @@ Run the API with auto-reload:
 uvicorn linkhop.main:app --reload --port 8080
 ```
 
-The OpenAPI docs are served at `http://localhost:8080/api/docs`.
+The OpenAPI docs are served at `http://localhost:8080/api/v1/docs`.
 
 ## Configuration
 

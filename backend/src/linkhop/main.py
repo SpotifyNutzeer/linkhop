@@ -54,7 +54,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     configure_logging(level=settings.log_level)
     app = FastAPI(
         title="linkhop", version="0.1.0",
-        docs_url="/api/docs", openapi_url="/api/v1/openapi.json",
+        docs_url="/api/v1/docs", openapi_url="/api/v1/openapi.json",
         lifespan=lifespan,
     )
     app.state.settings = settings
