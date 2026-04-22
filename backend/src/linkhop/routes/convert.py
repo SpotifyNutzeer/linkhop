@@ -90,7 +90,10 @@ async def convert(
             )
         host = request.headers.get("host", "")
         scheme = request.url.scheme
-        share_info = ShareInfo(id=sid, url=f"{scheme}://{host}/api/v1/c/{sid}")
+        # Public-facing Frontend-Route, nicht der API-Endpoint: Der User klickt
+        # den Link, erwartet eine gerenderte Ergebnisseite — nicht das JSON.
+        # Frontend lädt /c/{sid} und ruft intern /api/v1/c/{sid} für die Daten.
+        share_info = ShareInfo(id=sid, url=f"{scheme}://{host}/c/{sid}")
 
     return ConvertResponse(
         source=source_model,
