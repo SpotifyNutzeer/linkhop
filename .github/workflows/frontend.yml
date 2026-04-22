@@ -164,6 +164,31 @@ jobs:
             exit 1
           fi
 
+      - name: Smoke-test API chain
+        run: |
+          echo "=== 1. Backend direkt (unsupported URL) ==="
+          curl -sf --max-time 10 'http://127.0.0.1:8080/api/v1/convert?url=https://not-a-music-service.example/xyz' || echo "EXIT: $?"
+
+          echo ""
+          echo "=== 2. Backend direkt (Deezer) ==="
+          curl -sf --max-time 20 'http://127.0.0.1:8080/api/v1/convert?url=https://www.deezer.com/track/3135556' | head -c 500 || echo "EXIT: $?"
+
+          echo ""
+          echo "=== 3. Via Vite proxy (unsupported URL) ==="
+          curl -sf --max-time 10 'http://127.0.0.1:5173/api/v1/convert?url=https://not-a-music-service.example/xyz' || echo "EXIT: $?"
+
+          echo ""
+          echo "=== 4. Via Vite proxy (Deezer) ==="
+          curl -sf --max-time 20 'http://127.0.0.1:5173/api/v1/convert?url=https://www.deezer.com/track/3135556' | head -c 500 || echo "EXIT: $?"
+
+          echo ""
+          echo "=== 5. Backend health ==="
+          curl -sf --max-time 5 'http://127.0.0.1:8080/api/v1/health' || echo "EXIT: $?"
+
+          echo ""
+          echo "=== 6. Page HTML (check if SvelteKit renders) ==="
+          curl -sf --max-time 5 'http://127.0.0.1:5173/?url=https://www.deezer.com/track/3135556' | grep -oE '<(div|section|a) [^>]*class="[^"]*"' | head -20 || echo "EXIT: $?"
+
       - name: Run E2E
         run: pnpm test:e2e
 
