@@ -250,6 +250,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # ghcr.io verlangt lowercase repo-Paths; github.repository_owner
+      # behält die Groß-/Kleinschreibung bei (hier "SpotifyNutzeer").
+      - name: Lowercase owner
+        run: echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+
       - name: Export backend openapi.json
         working-directory: backend
         run: |
@@ -268,5 +273,5 @@ jobs:
           context: frontend
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/linkhop-frontend:${{ github.event.release.tag_name }}
-            ghcr.io/${{ github.repository_owner }}/linkhop-frontend:latest
+            ghcr.io/${{ env.OWNER_LC }}/linkhop-frontend:${{ github.event.release.tag_name }}
+            ghcr.io/${{ env.OWNER_LC }}/linkhop-frontend:latest

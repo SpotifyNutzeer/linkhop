@@ -78,10 +78,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # ghcr.io verlangt lowercase repo-Paths; github.repository_owner
+      # behält die Groß-/Kleinschreibung bei (hier "SpotifyNutzeer").
+      - name: Lowercase owner
+        run: echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+
       - uses: docker/build-push-action@v5
         with:
           context: backend
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/linkhop-backend:${{ github.event.release.tag_name }}
-            ghcr.io/${{ github.repository_owner }}/linkhop-backend:latest
+            ghcr.io/${{ env.OWNER_LC }}/linkhop-backend:${{ github.event.release.tag_name }}
+            ghcr.io/${{ env.OWNER_LC }}/linkhop-backend:latest
