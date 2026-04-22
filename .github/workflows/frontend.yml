@@ -70,7 +70,7 @@ jobs:
     # E2E_TEST_URL lets us swap the happy-path URL if Tidal's public metadata
     # endpoint flakes in CI. Leave unset to keep the smoke spec's default.
     env:
-      E2E_BASE_URL: http://localhost:5173
+      E2E_BASE_URL: http://127.0.0.1:5173
     steps:
       - uses: actions/checkout@v4
 
@@ -108,6 +108,8 @@ jobs:
 
       - name: Initialise backend schema
         working-directory: backend
+        env:
+          LINKHOP_DATABASE_URL: "postgresql+asyncpg://linkhop:linkhop@127.0.0.1:5432/linkhop"
         run: linkhop-admin init-db
 
       # Hintergrund-Launches schliessen stdin und disownen, sonst hält bash
@@ -116,15 +118,28 @@ jobs:
       # würde den Step bis zum 6-h-Job-Limit pollen. 127.0.0.1 statt localhost,
       # weil localhost auf ::1 resolven kann und uvicorn mit --host 127.0.0.1
       # nur IPv4 bedient.
+      #
+      # LINKHOP_DATABASE_URL / LINKHOP_REDIS_URL: Die pydantic-settings Defaults
+      # verwenden "localhost", was auf Ubuntu-Runnern als ::1 auflösen kann.
+      # Docker Compose bindet Postgres + Redis nur auf 127.0.0.1, deshalb
+      # erzwingen wir hier explizit IPv4.
       - name: Start backend (uvicorn)
         working-directory: backend
+        env:
+          LINKHOP_DATABASE_URL: "postgresql+asyncpg://linkhop:linkhop@127.0.0.1:5432/linkhop"
+          LINKHOP_REDIS_URL: "redis://127.0.0.1:6379/0"
         run: |
-          nohup uvicorn linkhop.main:app --host 127.0.0.1 --port 8080 \
+          nohup env \
+            LINKHOP_DATABASE_URL="$LINKHOP_DATABASE_URL" \
+            LINKHOP_REDIS_URL="$LINKHOP_REDIS_URL" \
+            uvicorn linkhop.main:app --host 127.0.0.1 --port 8080 \
             > uvicorn.log 2>&1 < /dev/null &
           disown
-          # http-get:// erzwingt GET. Mit plain http:// schickt wait-on HEAD,
-          # was FastAPI mit 405 beantwortet — wait-on sieht dann nie 2xx.
-          if ! npx --yes wait-on -t 60000 http-get://127.0.0.1:8080/api/v1/services; then
+          # /health prüft sowohl Redis als auch Postgres. /services hatte
+          # weder Redis- noch DB-Zugriff, d.h. ein kaputter Redis liess den
+          # Check passieren, aber jeder /convert-Request hing dann im
+          # Rate-Limiter.
+          if ! npx --yes wait-on -t 60000 http-get://127.0.0.1:8080/api/v1/health; then
             echo "::group::uvicorn.log"
             cat uvicorn.log || true
             echo "::endgroup::"
