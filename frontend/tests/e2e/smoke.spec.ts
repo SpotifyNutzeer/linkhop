@@ -6,6 +6,21 @@ import AxeBuilder from '@axe-core/playwright';
 // are available.
 const TEST_URL = process.env.E2E_TEST_URL ?? 'https://www.deezer.com/track/3135556';
 
+// Diagnostik: Browser-Console und -Fehler in CI loggen.
+test.beforeEach(async ({ page }) => {
+  page.on('console', (msg) => {
+    if (msg.type() === 'error' || msg.type() === 'warning') {
+      console.log(`[browser:${msg.type()}] ${msg.text()}`);
+    }
+  });
+  page.on('pageerror', (err) => {
+    console.log(`[browser:pageerror] ${err.message}`);
+  });
+  page.on('requestfailed', (req) => {
+    console.log(`[browser:requestfailed] ${req.method()} ${req.url()} → ${req.failure()?.errorText}`);
+  });
+});
+
 test.describe('linkhop smoke', () => {
   test('home renders and theme toggle persists', async ({ page }) => {
     await page.goto('/');
@@ -24,15 +39,49 @@ test.describe('linkhop smoke', () => {
   });
 
   test('happy-path convert shows result', async ({ page }) => {
-    await page.goto(`/?url=${encodeURIComponent(TEST_URL)}`);
-    await expect(page.locator('a.link[target="_blank"]').first()).toBeVisible({
-      timeout: 30_000
+    // Netzwerk-Requests loggen um Proxy-Verhalten zu verifizieren.
+    page.on('response', (res) => {
+      if (res.url().includes('/api/')) {
+        console.log(`[network] ${res.status()} ${res.url()}`);
+      }
     });
+
+    await page.goto(`/?url=${encodeURIComponent(TEST_URL)}`);
+
+    // Kurz warten und dann DOM-Zustand erfassen falls Element nicht da.
+    try {
+      await expect(page.locator('a.link[target="_blank"]').first()).toBeVisible({
+        timeout: 30_000
+      });
+    } catch (e) {
+      // DOM-Snapshot für Diagnostik
+      const html = await page.content();
+      console.log('[diag:url]', page.url());
+      console.log('[diag:html-length]', html.length);
+      // Nur relevante Teile loggen
+      const main = await page.locator('main').innerHTML().catch(() => 'MAIN_NOT_FOUND');
+      console.log('[diag:main]', main.slice(0, 2000));
+      throw e;
+    }
   });
 
   test('invalid url shows ErrorPanel with copy-debug', async ({ page }) => {
+    page.on('response', (res) => {
+      if (res.url().includes('/api/')) {
+        console.log(`[network] ${res.status()} ${res.url()}`);
+      }
+    });
+
     await page.goto('/?url=https://not-a-music-service.example/xyz');
-    await expect(page.getByRole('alert')).toBeVisible({ timeout: 15_000 });
+
+    try {
+      await expect(page.getByRole('alert')).toBeVisible({ timeout: 15_000 });
+    } catch (e) {
+      const main = await page.locator('main').innerHTML().catch(() => 'MAIN_NOT_FOUND');
+      console.log('[diag:url]', page.url());
+      console.log('[diag:main]', main.slice(0, 2000));
+      throw e;
+    }
     await expect(page.getByRole('button', { name: /debug.*kopieren/i })).toBeVisible();
   });
 
