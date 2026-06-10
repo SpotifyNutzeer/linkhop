@@ -31,8 +31,7 @@ describe('HistoryDropdown', () => {
     ]);
     const handler = vi.fn();
     const { getByRole } = render(HistoryDropdown, {
-      props: { open: true },
-      events: { select: (e: CustomEvent) => handler(e.detail) }
+      props: { open: true, onselect: (detail: { url: string }) => handler(detail) }
     });
     await fireEvent.click(getByRole('option', { name: /T/ }));
     expect(handler).toHaveBeenCalledWith({ url: 'https://a' });
@@ -101,8 +100,7 @@ describe('HistoryDropdown', () => {
       history.set(THREE_ENTRIES);
       const handler = vi.fn();
       const { getByRole, getAllByRole } = render(HistoryDropdown, {
-        props: { open: true },
-        events: { select: (e: CustomEvent) => handler(e.detail) }
+        props: { open: true, onselect: (detail: { url: string }) => handler(detail) }
       });
       const listbox = getByRole('listbox', { name: /verlauf/i });
       const options = getAllByRole('option');
@@ -117,8 +115,7 @@ describe('HistoryDropdown', () => {
       history.set(THREE_ENTRIES);
       const handler = vi.fn();
       const { getByRole } = render(HistoryDropdown, {
-        props: { open: true },
-        events: { close: () => handler() }
+        props: { open: true, onclose: () => handler() }
       });
       const listbox = getByRole('listbox', { name: /verlauf/i });
       await fireEvent.keyDown(listbox, { key: 'Escape' });

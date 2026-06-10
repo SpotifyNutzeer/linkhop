@@ -6,7 +6,7 @@ describe('InputBar', () => {
   it('dispatches submit with url on button click', async () => {
     const handler = vi.fn();
     const { getByRole } = render(InputBar, {
-      events: { submit: (e: CustomEvent) => handler(e.detail) }
+      props: { onsubmit: (detail: { url: string }) => handler(detail) }
     });
     const input = getByRole('textbox');
     await fireEvent.input(input, { target: { value: 'https://x' } });
@@ -17,7 +17,7 @@ describe('InputBar', () => {
   it('dispatches submit on Enter', async () => {
     const handler = vi.fn();
     const { getByRole } = render(InputBar, {
-      events: { submit: (e: CustomEvent) => handler(e.detail) }
+      props: { onsubmit: (detail: { url: string }) => handler(detail) }
     });
     const input = getByRole('textbox');
     await fireEvent.input(input, { target: { value: 'https://y' } });
@@ -28,7 +28,7 @@ describe('InputBar', () => {
   it('does not submit empty value', async () => {
     const handler = vi.fn();
     const { getByRole } = render(InputBar, {
-      events: { submit: (e: CustomEvent) => handler(e.detail) }
+      props: { onsubmit: (detail: { url: string }) => handler(detail) }
     });
     await fireEvent.click(getByRole('button', { name: /konvertieren/i }));
     expect(handler).not.toHaveBeenCalled();

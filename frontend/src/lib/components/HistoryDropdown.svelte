@@ -1,21 +1,27 @@
 <script lang="ts">
-  import { createEventDispatcher, tick } from 'svelte';
+  import { tick } from 'svelte';
   import { history, clearHistory } from '$lib/stores/history';
 
-  export let open = false;
+  interface Props {
+    open?: boolean;
+    onselect?: (detail: { url: string }) => void;
+    onclose?: () => void;
+  }
 
-  const dispatch = createEventDispatcher<{ select: { url: string }; close: void }>();
+  let { open = false, onselect, onclose }: Props = $props();
 
-  let activeIndex = 0;
-  let itemButtons: HTMLButtonElement[] = [];
+  let activeIndex = $state(0);
+  let itemButtons: HTMLButtonElement[] = $state([]);
 
   // Keep activeIndex within bounds when the history list shrinks. When the
   // dropdown closes, reset to 0 so the next open starts fresh.
-  $: if (!open) {
-    activeIndex = 0;
-  } else if (activeIndex >= $history.length) {
-    activeIndex = Math.max(0, $history.length - 1);
-  }
+  $effect(() => {
+    if (!open) {
+      activeIndex = 0;
+    } else if (activeIndex >= $history.length) {
+      activeIndex = Math.max(0, $history.length - 1);
+    }
+  });
 
   async function focusActive() {
     await tick();
@@ -26,7 +32,7 @@
     const len = $history.length;
     if (event.key === 'Escape') {
       event.preventDefault();
-      dispatch('close');
+      onclose?.();
       return;
     }
     if (!len) return;
@@ -55,7 +61,7 @@
   }
 
   function select(url: string) {
-    dispatch('select', { url });
+    onselect?.({ url });
   }
 
   function truncate(url: string, n = 40) {
@@ -69,7 +75,7 @@
     role="listbox"
     aria-label="Verlauf"
     tabindex="-1"
-    on:keydown={handleKey}
+    onkeydown={handleKey}
   >
     <div class="hint">Zuletzt</div>
     {#each $history as entry, i (entry.sourceUrl)}
@@ -81,7 +87,7 @@
         aria-label={entry.title}
         aria-selected={activeIndex === i}
         tabindex={activeIndex === i ? 0 : -1}
-        on:click={() => select(entry.sourceUrl)}
+        onclick={() => select(entry.sourceUrl)}
       >
         <span class="title">{entry.title}</span>
         {#if entry.artists.length}<span class="artists">— {entry.artists.join(', ')}</span>{/if}
@@ -89,7 +95,7 @@
       </button>
     {/each}
     <div class="footer">
-      <button type="button" class="clear" on:click={clearHistory}>Verlauf leeren</button>
+      <button type="button" class="clear" onclick={clearHistory}>Verlauf leeren</button>
     </div>
   </div>
 {/if}

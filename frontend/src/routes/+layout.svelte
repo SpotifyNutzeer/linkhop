@@ -4,6 +4,11 @@
   import { onMount } from 'svelte';
   import { services as servicesStore } from '$lib/stores/services';
   import { services as fetchServices } from '$lib/api/client';
+  interface Props {
+    children?: import('svelte').Snippet;
+  }
+
+  let { children }: Props = $props();
 
   onMount(async () => {
     try {
@@ -19,7 +24,7 @@
 
 <Header />
 <main>
-  <slot />
+  {@render children?.()}
 </main>
 
 <style>

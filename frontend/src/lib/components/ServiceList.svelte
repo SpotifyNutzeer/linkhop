@@ -3,16 +3,20 @@
   import { services } from '$lib/stores/services';
   import ServiceItem from './ServiceItem.svelte';
 
-  export let sourceService: string;
-  export let sourceUrl: string;
-  export let targets: ConvertResponse['targets'];
+  interface Props {
+    sourceService: string;
+    sourceUrl: string;
+    targets: ConvertResponse['targets'];
+  }
+
+  let { sourceService, sourceUrl, targets }: Props = $props();
 
   function displayName(id: string): string {
     return $services[id]?.name ?? id;
   }
 
-  $: sourceResult = { status: 'ok', url: sourceUrl } satisfies TargetResult;
-  $: targetEntries = Object.entries(targets).filter(([id]) => id !== sourceService);
+  let sourceResult = $derived({ status: 'ok', url: sourceUrl } satisfies TargetResult);
+  let targetEntries = $derived(Object.entries(targets).filter(([id]) => id !== sourceService));
 </script>
 
 <div class="list">

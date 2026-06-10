@@ -3,7 +3,11 @@
   import { ApiError, type ApiErrorCode } from '$lib/api/types';
   import { createCopyFeedback } from '$lib/stores/copyFeedback';
 
-  export let error: ApiError;
+  interface Props {
+    error: ApiError;
+  }
+
+  let { error }: Props = $props();
 
   const messages: Record<ApiErrorCode, string> = {
     invalid_url: 'Ungültiger Link.',
@@ -37,7 +41,7 @@
   {#if error.status === 400 && error.message}
     <p class="detail">{error.message}</p>
   {/if}
-  <button type="button" class="debug" on:click={copyDebug}>
+  <button type="button" class="debug" onclick={copyDebug}>
     {#if $copyFailed}
       Kopieren fehlgeschlagen
     {:else if $copied}

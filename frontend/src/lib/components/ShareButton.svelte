@@ -4,13 +4,17 @@
   import { ApiError } from '$lib/api/types';
   import { createCopyFeedback } from '$lib/stores/copyFeedback';
 
-  export let sourceUrl: string;
+  interface Props {
+    sourceUrl: string;
+  }
 
-  type State = 'idle' | 'loading' | 'done' | 'error';
+  let { sourceUrl }: Props = $props();
 
-  let state: State = 'idle';
-  let shortUrl = '';
-  let shareError: ApiError | null = null;
+  type Status = 'idle' | 'loading' | 'done' | 'error';
+
+  let status: Status = $state('idle');
+  let shortUrl = $state('');
+  let shareError: ApiError | null = $state(null);
   let currentController: AbortController | null = null;
 
   const feedback = createCopyFeedback();
@@ -20,7 +24,7 @@
     currentController?.abort();
     const ctrl = new AbortController();
     currentController = ctrl;
-    state = 'loading';
+    status = 'loading';
     shareError = null;
     try {
       const res = await convert(sourceUrl, { share: true, signal: ctrl.signal });
@@ -28,15 +32,15 @@
       const info = res.share;
       if (!info?.id) {
         shareError = new ApiError('server_error', 0, 'Antwort ohne Share-ID', sourceUrl);
-        state = 'error';
+        status = 'error';
         return;
       }
       shortUrl = info.url ?? `${window.location.origin}/c/${info.id}`;
-      state = 'done';
+      status = 'done';
     } catch (e) {
       if (ctrl.signal.aborted || (e as DOMException).name === 'AbortError') return;
       shareError = e instanceof ApiError ? e : new ApiError('server_error', 0, String(e), sourceUrl);
-      state = 'error';
+      status = 'error';
     } finally {
       if (currentController === ctrl) {
         currentController = null;
@@ -56,16 +60,16 @@
 </script>
 
 <div class="share">
-  {#if state === 'idle'}
-    <button type="button" class="primary" on:click={share}>Teilen</button>
-  {:else if state === 'loading'}
+  {#if status === 'idle'}
+    <button type="button" class="primary" onclick={share}>Teilen</button>
+  {:else if status === 'loading'}
     <button type="button" class="primary" disabled>
       <span class="spinner" aria-hidden="true"></span>
       Erzeuge Link …
     </button>
-  {:else if state === 'done'}
+  {:else if status === 'done'}
     <code class="short">{shortUrl}</code>
-    <button type="button" class="ghost" aria-label="Kurzlink kopieren" on:click={copy}>
+    <button type="button" class="ghost" aria-label="Kurzlink kopieren" onclick={copy}>
       {#if $copyFailed}
         Fehlgeschlagen
       {:else if $copied}
@@ -74,9 +78,9 @@
         Kopieren
       {/if}
     </button>
-  {:else if state === 'error'}
+  {:else if status === 'error'}
     <span class="error">Fehler beim Erzeugen des Links</span>
-    <button type="button" class="ghost" on:click={share}>Nochmal</button>
+    <button type="button" class="ghost" onclick={share}>Nochmal</button>
   {/if}
 </div>
 
