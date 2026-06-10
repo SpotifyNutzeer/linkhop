@@ -5,8 +5,9 @@ import InputBar from './InputBar.svelte';
 describe('InputBar', () => {
   it('dispatches submit with url on button click', async () => {
     const handler = vi.fn();
-    const { getByRole, component } = render(InputBar);
-    component.$on('submit', (e: CustomEvent) => handler(e.detail));
+    const { getByRole } = render(InputBar, {
+      events: { submit: (e: CustomEvent) => handler(e.detail) }
+    });
     const input = getByRole('textbox');
     await fireEvent.input(input, { target: { value: 'https://x' } });
     await fireEvent.click(getByRole('button', { name: /konvertieren/i }));
@@ -15,8 +16,9 @@ describe('InputBar', () => {
 
   it('dispatches submit on Enter', async () => {
     const handler = vi.fn();
-    const { getByRole, component } = render(InputBar);
-    component.$on('submit', (e: CustomEvent) => handler(e.detail));
+    const { getByRole } = render(InputBar, {
+      events: { submit: (e: CustomEvent) => handler(e.detail) }
+    });
     const input = getByRole('textbox');
     await fireEvent.input(input, { target: { value: 'https://y' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
@@ -25,8 +27,9 @@ describe('InputBar', () => {
 
   it('does not submit empty value', async () => {
     const handler = vi.fn();
-    const { getByRole, component } = render(InputBar);
-    component.$on('submit', (e: CustomEvent) => handler(e.detail));
+    const { getByRole } = render(InputBar, {
+      events: { submit: (e: CustomEvent) => handler(e.detail) }
+    });
     await fireEvent.click(getByRole('button', { name: /konvertieren/i }));
     expect(handler).not.toHaveBeenCalled();
   });

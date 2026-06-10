@@ -60,7 +60,7 @@
     <button type="button" class="primary" on:click={share}>Teilen</button>
   {:else if state === 'loading'}
     <button type="button" class="primary" disabled>
-      <span class="spinner" aria-hidden="true" />
+      <span class="spinner" aria-hidden="true"></span>
       Erzeuge Link …
     </button>
   {:else if state === 'done'}

@@ -3,6 +3,9 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [sveltekit()],
+  // Svelte 5 exportiert getrennte client/server-Builds; ohne "browser"-Condition
+  // lädt Vitest den Server-Build und mount() schlägt fehl.
+  resolve: process.env.VITEST ? { conditions: ['browser'] } : undefined,
   server: {
     port: 5173,
     // Vite 5.4.x (CVE-2025-30208-Fix) blockt Requests mit 403, wenn der

@@ -3,13 +3,13 @@
 </script>
 
 <div class="card" aria-busy="true" aria-label="Lädt …">
-  <div class="cover shimmer" />
+  <div class="cover shimmer"></div>
   <div class="meta">
-    <div class="line shimmer w-60" />
-    <div class="line shimmer w-40" />
-    <div class="line shimmer w-90" />
-    <div class="line shimmer w-90" />
-    <div class="line shimmer w-90" />
+    <div class="line shimmer w-60"></div>
+    <div class="line shimmer w-40"></div>
+    <div class="line shimmer w-90"></div>
+    <div class="line shimmer w-90"></div>
+    <div class="line shimmer w-90"></div>
   </div>
 </div>
 
