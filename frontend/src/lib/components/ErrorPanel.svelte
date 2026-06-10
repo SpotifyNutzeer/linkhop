@@ -31,7 +31,7 @@
 
 <section class="panel" role="alert">
   <div class="head">
-    <span class="pulse" aria-hidden="true" />
+    <span class="pulse" aria-hidden="true"></span>
     <h3>{messages[error.code]}</h3>
   </div>
   {#if error.status === 400 && error.message}

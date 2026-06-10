@@ -30,8 +30,10 @@ describe('HistoryDropdown', () => {
       { sourceUrl: 'https://a', title: 'T', artists: [], coverUrl: null, timestamp: 1 }
     ]);
     const handler = vi.fn();
-    const { getByRole, component } = render(HistoryDropdown, { props: { open: true } });
-    component.$on('select', (e: CustomEvent) => handler(e.detail));
+    const { getByRole } = render(HistoryDropdown, {
+      props: { open: true },
+      events: { select: (e: CustomEvent) => handler(e.detail) }
+    });
     await fireEvent.click(getByRole('option', { name: /T/ }));
     expect(handler).toHaveBeenCalledWith({ url: 'https://a' });
   });
@@ -98,10 +100,10 @@ describe('HistoryDropdown', () => {
     it('Enter on a focused option dispatches select', async () => {
       history.set(THREE_ENTRIES);
       const handler = vi.fn();
-      const { getByRole, getAllByRole, component } = render(HistoryDropdown, {
-        props: { open: true }
+      const { getByRole, getAllByRole } = render(HistoryDropdown, {
+        props: { open: true },
+        events: { select: (e: CustomEvent) => handler(e.detail) }
       });
-      component.$on('select', (e: CustomEvent) => handler(e.detail));
       const listbox = getByRole('listbox', { name: /verlauf/i });
       const options = getAllByRole('option');
       options[0].focus();
@@ -114,8 +116,10 @@ describe('HistoryDropdown', () => {
     it('Escape dispatches close event', async () => {
       history.set(THREE_ENTRIES);
       const handler = vi.fn();
-      const { getByRole, component } = render(HistoryDropdown, { props: { open: true } });
-      component.$on('close', () => handler());
+      const { getByRole } = render(HistoryDropdown, {
+        props: { open: true },
+        events: { close: () => handler() }
+      });
       const listbox = getByRole('listbox', { name: /verlauf/i });
       await fireEvent.keyDown(listbox, { key: 'Escape' });
       expect(handler).toHaveBeenCalledTimes(1);

@@ -22,7 +22,7 @@
         loading="lazy"
       />
     {:else}
-      <div class="cover placeholder" aria-hidden="true" />
+      <div class="cover placeholder" aria-hidden="true"></div>
     {/if}
   </div>
 
