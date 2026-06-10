@@ -3,10 +3,19 @@
   import type { TargetResult } from '$lib/api/types';
   import { createCopyFeedback } from '$lib/stores/copyFeedback';
 
-  export let serviceId: string;
-  export let displayName: string;
-  export let result: TargetResult;
-  export let isSource = false;
+  interface Props {
+    serviceId: string;
+    displayName: string;
+    result: TargetResult;
+    isSource?: boolean;
+  }
+
+  let {
+    serviceId,
+    displayName,
+    result,
+    isSource = false
+  }: Props = $props();
 
   const feedback = createCopyFeedback();
   const { copied, copyFailed } = feedback;
@@ -18,8 +27,8 @@
 
   onDestroy(() => feedback.destroy());
 
-  $: linkUrl =
-    (result.status === 'ok' || result.status === 'ok_low') ? result.url ?? null : null;
+  let linkUrl =
+    $derived((result.status === 'ok' || result.status === 'ok_low') ? result.url ?? null : null);
 </script>
 
 <div class="row" class:source={isSource} data-service-id={serviceId}>
@@ -42,7 +51,7 @@
         type="button"
         class="copy"
         aria-label="Link kopieren"
-        on:click={copy}
+        onclick={copy}
       >
         {#if $copyFailed}
           Fehlgeschlagen

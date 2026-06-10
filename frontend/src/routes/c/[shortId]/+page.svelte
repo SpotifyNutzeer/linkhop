@@ -8,9 +8,9 @@
   import { ApiError } from '$lib/api/types';
   import type { ConvertResponse } from '$lib/api/types';
 
-  let loading = true;
-  let result: ConvertResponse | null = null;
-  let error: ApiError | null = null;
+  let loading = $state(true);
+  let result: ConvertResponse | null = $state(null);
+  let error: ApiError | null = $state(null);
 
   onMount(async () => {
     // Route matcher /c/[shortId] guarantees a non-empty string here.

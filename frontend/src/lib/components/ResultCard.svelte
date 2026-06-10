@@ -2,7 +2,12 @@
   import type { ConvertResponse } from '$lib/api/types';
   import ServiceList from './ServiceList.svelte';
 
-  export let result: ConvertResponse;
+  interface Props {
+    result: ConvertResponse;
+    share?: import('svelte').Snippet<[ConvertResponse]>;
+  }
+
+  let { result, share }: Props = $props();
 </script>
 
 <article class="card">
@@ -38,7 +43,7 @@
       targets={result.targets ?? {}}
     />
 
-    <slot name="share" />
+    {@render share?.(result)}
   </div>
 </article>
 

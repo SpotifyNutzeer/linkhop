@@ -12,7 +12,7 @@
   type="button"
   class="theme-toggle"
   aria-label={labels[$themePref]}
-  on:click={cycleTheme}
+  onclick={cycleTheme}
 >
   <span class="icon" aria-hidden="true">
     {#if $themePref === 'auto'}

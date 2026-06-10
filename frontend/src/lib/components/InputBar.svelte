@@ -1,19 +1,24 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  interface Props {
+    value?: string;
+    disabled?: boolean;
+    onsubmit?: (detail: { url: string }) => void;
+    onfocus?: () => void;
+    onblur?: () => void;
+  }
 
-  export let value = '';
-  export let disabled = false;
-
-  const dispatch = createEventDispatcher<{
-    submit: { url: string };
-    focus: void;
-    blur: void;
-  }>();
+  let {
+    value = $bindable(''),
+    disabled = false,
+    onsubmit,
+    onfocus,
+    onblur
+  }: Props = $props();
 
   function submit() {
     const trimmed = value.trim();
     if (!trimmed) return;
-    dispatch('submit', { url: trimmed });
+    onsubmit?.({ url: trimmed });
   }
 
   function onKeyDown(e: KeyboardEvent) {
@@ -33,13 +38,13 @@
     type="url"
     placeholder="Spotify-, Deezer- oder Tidal-Link einfügen …"
     bind:value
-    on:keydown={onKeyDown}
-    on:focus={() => dispatch('focus')}
-    on:blur={() => dispatch('blur')}
+    onkeydown={onKeyDown}
+    onfocus={() => onfocus?.()}
+    onblur={() => onblur?.()}
     aria-label="Streaming-Link"
     {disabled}
   />
-  <button type="button" class="go" on:click={submit} {disabled}>Konvertieren</button>
+  <button type="button" class="go" onclick={submit} {disabled}>Konvertieren</button>
 </div>
 
 <style>

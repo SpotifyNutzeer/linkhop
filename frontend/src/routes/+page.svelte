@@ -12,11 +12,11 @@
   import { addHistory } from '$lib/stores/history';
   import type { ConvertResponse } from '$lib/api/types';
 
-  let inputValue = '';
-  let dropdownOpen = false;
-  let loading = false;
-  let result: ConvertResponse | null = null;
-  let error: ApiError | null = null;
+  let inputValue = $state('');
+  let dropdownOpen = $state(false);
+  let loading = $state(false);
+  let result: ConvertResponse | null = $state(null);
+  let error: ApiError | null = $state(null);
   let currentController: AbortController | null = null;
 
   async function runConvert(url: string) {
@@ -68,20 +68,20 @@
 </script>
 
 <div class="home">
-  <div class="input-wrap" on:focusout={onWrapFocusOut}>
+  <div class="input-wrap" onfocusout={onWrapFocusOut}>
     <InputBar
       bind:value={inputValue}
       disabled={loading}
-      on:submit={(e) => runConvert(e.detail.url)}
-      on:focus={() => (dropdownOpen = true)}
+      onsubmit={(detail) => runConvert(detail.url)}
+      onfocus={() => (dropdownOpen = true)}
     />
     <HistoryDropdown
       open={dropdownOpen}
-      on:select={(e) => {
+      onselect={(detail) => {
         dropdownOpen = false;
-        runConvert(e.detail.url);
+        runConvert(detail.url);
       }}
-      on:close={() => (dropdownOpen = false)}
+      onclose={() => (dropdownOpen = false)}
     />
   </div>
 
@@ -93,9 +93,9 @@
     {/key}
   {:else if result}
     <ResultCard {result}>
-      <svelte:fragment slot="share">
-        <ShareButton sourceUrl={result.source.url} />
-      </svelte:fragment>
+      {#snippet share(res)}
+        <ShareButton sourceUrl={res.source.url} />
+      {/snippet}
     </ResultCard>
   {/if}
 </div>
