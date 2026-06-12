@@ -27,6 +27,8 @@ from linkhop.url_parser import ParsedUrl, UnsupportedUrlError, parse
     # Round-Trip eigener Links muss funktionieren.
     ("https://music.youtube.com/browse/MPREb_K0OB6WlC9bF", "youtube_music", "album", "MPREb_K0OB6WlC9bF"),  # noqa: E501
     ("https://music.youtube.com/channel/UC0FvDIzS3wnvBJN1DyGZv6g", "youtube_music", "artist", "UC0FvDIzS3wnvBJN1DyGZv6g"),  # noqa: E501
+    ("https://music.youtube.com/watch/?v=dQw4w9WgXcQ", "youtube_music", "track", "dQw4w9WgXcQ"),
+    ("https://music.youtube.com/playlist/?list=OLAK5uy_kkmbD9ZRiBSpYRrrFiEW8u17rPWLKecJk", "youtube_music", "album", "OLAK5uy_kkmbD9ZRiBSpYRrrFiEW8u17rPWLKecJk"),  # noqa: E501
 ])
 def test_parse_valid(url, service, type_, id_):
     result = parse(url)
@@ -49,6 +51,8 @@ def test_parse_valid(url, service, type_, id_):
     "https://music.youtube.com/watch?v=tooshort",            # Video-ID != 11 Zeichen
     "https://www.youtube.com/watch?v=dQw4w9WgXcQ",           # nur music.youtube.com erlaubt
     "https://youtu.be/dQw4w9WgXcQ",
+    "https://music.youtube.com/browse/PLsome_normal_playlist",   # kein MPREb_-Präfix
+    "https://music.youtube.com/channel/XCsomethingNotUC",        # kein UC-Präfix
 ])
 def test_parse_invalid_raises(url):
     with pytest.raises(UnsupportedUrlError):

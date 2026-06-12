@@ -75,11 +75,11 @@ def parse(url: str) -> ParsedUrl:
     elif host == "music.youtube.com":
         query = parse_qs(parsed.query)
         if path.rstrip("/") == "/watch":
-            vid = (query.get("v") or [""])[0]
+            vid = query.get("v", [""])[0]
             if _YTM_VIDEO_ID.match(vid):
                 return ParsedUrl("youtube_music", "track", vid)
         elif path.rstrip("/") == "/playlist":
-            lid = (query.get("list") or [""])[0]
+            lid = query.get("list", [""])[0]
             if _YTM_ALBUM_PLAYLIST.match(lid):
                 return ParsedUrl("youtube_music", "album", lid)
         else:
