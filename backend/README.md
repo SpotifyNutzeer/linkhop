@@ -39,7 +39,7 @@ The OpenAPI docs are served at `http://localhost:8080/api/v1/docs`.
 
 All settings are loaded from env vars prefixed `LINKHOP_` (see
 `src/linkhop/config.py`). The defaults match the docker-compose setup,
-so a plain `docker-compose up -d` + `uvicorn …` works without overrides.
+so a plain `docker-compose up -d` + `uv run uvicorn …` works without overrides.
 
 | Env var | Default | Notes |
 | --- | --- | --- |
