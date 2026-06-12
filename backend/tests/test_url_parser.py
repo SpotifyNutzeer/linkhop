@@ -20,6 +20,13 @@ from linkhop.url_parser import ParsedUrl, UnsupportedUrlError, parse
     # Share-Suffix der Tidal-App (siehe Report von 2026-04-19)
     ("https://tidal.com/track/513174201/u", "tidal", "track", "513174201"),
     ("https://tidal.com/browse/album/77640616/u", "tidal", "album", "77640616"),
+    ("https://music.youtube.com/watch?v=dQw4w9WgXcQ", "youtube_music", "track", "dQw4w9WgXcQ"),
+    ("https://music.youtube.com/watch?v=dQw4w9WgXcQ&si=AbC", "youtube_music", "track", "dQw4w9WgXcQ"),  # noqa: E501
+    ("https://music.youtube.com/playlist?list=OLAK5uy_kkmbD9ZRiBSpYRrrFiEW8u17rPWLKecJk", "youtube_music", "album", "OLAK5uy_kkmbD9ZRiBSpYRrrFiEW8u17rPWLKecJk"),  # noqa: E501
+    # /browse/<MPREb_…> ist die Form, die linkhop selbst als Album-Ziel-URL erzeugt —
+    # Round-Trip eigener Links muss funktionieren.
+    ("https://music.youtube.com/browse/MPREb_K0OB6WlC9bF", "youtube_music", "album", "MPREb_K0OB6WlC9bF"),  # noqa: E501
+    ("https://music.youtube.com/channel/UC0FvDIzS3wnvBJN1DyGZv6g", "youtube_music", "artist", "UC0FvDIzS3wnvBJN1DyGZv6g"),  # noqa: E501
 ])
 def test_parse_valid(url, service, type_, id_):
     result = parse(url)
@@ -37,6 +44,11 @@ def test_parse_valid(url, service, type_, id_):
     "spotify:track:abc def",                   # whitespace in ID
     "spotify:track:has/slash",                 # invalid char
     "http://[invalid",                          # malformed URL (urlparse raises)
+    "https://music.youtube.com/playlist?list=PLabc12345",   # normale Playlist, kein Album
+    "https://music.youtube.com/watch",                       # kein v=-Parameter
+    "https://music.youtube.com/watch?v=tooshort",            # Video-ID != 11 Zeichen
+    "https://www.youtube.com/watch?v=dQw4w9WgXcQ",           # nur music.youtube.com erlaubt
+    "https://youtu.be/dQw4w9WgXcQ",
 ])
 def test_parse_invalid_raises(url):
     with pytest.raises(UnsupportedUrlError):
