@@ -1,26 +1,30 @@
-FROM python:3.12-slim AS build
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS build
 WORKDIR /app
-RUN pip install --no-cache-dir hatchling
-COPY pyproject.toml README.md ./
+# Bytecode beim Build vorkompilieren beschleunigt den Container-Start.
+# copy statt hardlink, weil uv-Cache und /app in unterschiedlichen Layern liegen.
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
+# Erst Manifest + Lock, Code später: der Dependency-Layer überlebt
+# Code-Änderungen im Docker-Cache.
+COPY pyproject.toml uv.lock ./
+RUN uv sync --locked --no-dev --no-install-project --no-editable
 COPY src ./src
-RUN pip wheel --no-deps --wheel-dir /wheels .
+RUN uv sync --locked --no-dev --no-editable
 
 FROM python:3.12-slim
 # Python-Runtime-Flags: ohne PYTHONUNBUFFERED sitzen stdout-Lines in Buffern,
 # wenn stdout eine Pipe ist (immer unter Docker) — bei Crash verliert man die
 # letzten JSON-Log-Records. PYTHONDONTWRITEBYTECODE spart Schreibzugriffe im
-# Nur-Lese-Container-Layout.
+# Nur-Lese-Container-Layout (die .pyc aus dem Build-Stage existieren schon).
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    LINKHOP_FORWARDED_ALLOW_IPS=127.0.0.1
+    LINKHOP_FORWARDED_ALLOW_IPS=127.0.0.1 \
+    PATH="/app/.venv/bin:$PATH"
 RUN useradd -u 10001 -m linkhop
 WORKDIR /app
-COPY --from=build /wheels /wheels
-# Wheel bringt uvicorn[standard] und asyncpg per pyproject.toml-Pins (0.44.*/0.31.*)
-# transitiv mit — extra Pins hier wären entweder redundant oder würden pip
-# in einen Resolve-Konflikt zwingen, sobald pyproject-Pin und Dockerfile-Pin
-# auseinanderdriften (was historisch schon passiert ist).
-RUN pip install --no-cache-dir /wheels/*.whl
+# Versionsgarantie kommt aus uv.lock (Build-Stage installiert --locked).
+# Das Runtime-Image enthält nur das fertige venv — kein uv, kein pip-Resolve.
+COPY --from=build /app/.venv /app/.venv
 COPY alembic.ini ./alembic.ini
 COPY alembic ./alembic
 USER linkhop
