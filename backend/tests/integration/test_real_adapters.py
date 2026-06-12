@@ -27,6 +27,8 @@ pytestmark = [
 async def clients():
     async with httpx.AsyncClient(timeout=15) as http:
         yield {
+            # .get() statt []: LINKHOP_LIVE_TESTS=1 -k youtube_music darf im
+            # Fixture-Setup nicht an fehlenden Spotify/Tidal-Creds scheitern.
             "spotify": SpotifyAdapter(
                 client=http,
                 client_id=os.environ.get("LINKHOP_SPOTIFY_CLIENT_ID", ""),
