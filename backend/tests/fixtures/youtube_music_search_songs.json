@@ -1,0 +1,6 @@
+[
+  {"category": "Songs", "resultType": "song", "videoId": "AjgWa4BLvz4", "title": "Nightcall", "artists": [{"name": "Kavinsky", "id": "UC0FvDIzS3wnvBJN1DyGZv6g"}], "album": {"name": "OutRun", "id": "MPREb_K0OB6WlC9bF"}, "duration_seconds": 257},
+  {"category": "Songs", "resultType": "song", "videoId": "MV53Dpw1BRY", "title": "Nightcall (Live)", "artists": [{"name": "Kavinsky"}], "duration_seconds": 312},
+  {"category": "Songs", "resultType": "song", "title": "Kaputter Eintrag ohne videoId", "artists": []},
+  {"category": "Songs", "resultType": "song", "videoId": "zTbf3RKvIbM", "title": "Nightcall Cover", "artists": [{"name": "Somebody"}], "duration_seconds": 260}
+]

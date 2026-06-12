@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
-from typing import Any
+from typing import Any, ClassVar
 
 from linkhop.adapters.base import AdapterCapabilities, AdapterError
 from linkhop.models.domain import ContentType, ResolvedContent, SearchHit
@@ -114,5 +114,49 @@ class YouTubeMusicAdapter:
             artwork=_best_thumbnail(data.get("thumbnails")),
         )
 
+    _FILTERS: ClassVar[dict[ContentType, str]] = {
+        ContentType.TRACK: "songs",
+        ContentType.ALBUM: "albums",
+        ContentType.ARTIST: "artists",
+    }
+
     async def search(self, meta: ResolvedContent, target_type: ContentType) -> list[SearchHit]:
-        return []
+        # Kein ISRC/UPC bei YouTube Music — immer Freitext-Suche, die Pipeline
+        # bewertet die Kandidaten anschließend per Metadaten-Scoring.
+        filter_ = self._FILTERS.get(target_type)
+        if filter_ is None:
+            return []
+        if target_type == ContentType.ARTIST or not meta.artists:
+            query = meta.title
+        else:
+            query = f"{meta.artists[0]} {meta.title}"
+        items = await self._call(self._yt.search, query, filter=filter_, limit=3) or []
+        hits: list[SearchHit] = []
+        # ytmusicapi behandelt limit als Richtwert, nicht als harte Grenze.
+        for item in items[:3]:
+            hit = self._to_hit(item, target_type)
+            if hit is not None:
+                hits.append(hit)
+        return hits
+
+    def _to_hit(self, item: dict[str, Any], target_type: ContentType) -> SearchHit | None:
+        if target_type == ContentType.TRACK:
+            vid = item.get("videoId")
+            if not vid:
+                return None
+            return SearchHit(
+                service=self.service_id, id=vid,
+                url=f"{_BASE}/watch?v={vid}", confidence=0.0, match="metadata",
+            )
+        browse_id = item.get("browseId")
+        if not browse_id:
+            return None
+        url = (
+            f"{_BASE}/channel/{browse_id}"
+            if target_type == ContentType.ARTIST
+            else f"{_BASE}/browse/{browse_id}"
+        )
+        return SearchHit(
+            service=self.service_id, id=browse_id,
+            url=url, confidence=0.0, match="metadata",
+        )

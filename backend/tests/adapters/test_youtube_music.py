@@ -123,3 +123,55 @@ async def test_resolve_wraps_library_error(adapter, yt):
     with pytest.raises(AdapterError) as exc:
         await adapter.resolve(ParsedUrl("youtube_music", "track", "AjgWa4BLvz4"))
     assert exc.value.service == "youtube_music"
+
+
+async def test_search_track(adapter, yt):
+    yt.search.return_value = fix("youtube_music_search_songs.json")
+    hits = await adapter.search(make_source(ContentType.TRACK), ContentType.TRACK)
+    # 4 Fixture-Einträge: items[:3] schneidet den 4. ab, der kaputte 3. (ohne
+    # videoId) wird übersprungen → genau 2 Hits.
+    assert len(hits) == 2
+    assert hits[0].id == "AjgWa4BLvz4"
+    assert hits[0].url == "https://music.youtube.com/watch?v=AjgWa4BLvz4"
+    assert all(h.match == "metadata" and h.confidence == 0.0 for h in hits)
+    yt.search.assert_called_once_with("Kavinsky Nightcall", filter="songs", limit=3)
+
+
+async def test_search_album(adapter, yt):
+    yt.search.return_value = fix("youtube_music_search_albums.json")
+    source = make_source(ContentType.ALBUM, title="OutRun")
+    hits = await adapter.search(source, ContentType.ALBUM)
+    assert len(hits) == 2
+    assert hits[0].id == "MPREb_K0OB6WlC9bF"
+    assert hits[0].url == "https://music.youtube.com/browse/MPREb_K0OB6WlC9bF"
+    yt.search.assert_called_once_with("Kavinsky OutRun", filter="albums", limit=3)
+
+
+async def test_search_artist_uses_plain_name_query(adapter, yt):
+    yt.search.return_value = fix("youtube_music_search_artists.json")
+    source = make_source(ContentType.ARTIST, title="Kavinsky")
+    hits = await adapter.search(source, ContentType.ARTIST)
+    assert len(hits) == 1
+    assert hits[0].id == "UC0FvDIzS3wnvBJN1DyGZv6g"
+    assert hits[0].url == "https://music.youtube.com/channel/UC0FvDIzS3wnvBJN1DyGZv6g"
+    # Bei Artists wäre "Kavinsky Kavinsky" (artists[0] + title) eine verzerrte Query.
+    yt.search.assert_called_once_with("Kavinsky", filter="artists", limit=3)
+
+
+async def test_search_without_artists_uses_title_only(adapter, yt):
+    yt.search.return_value = fix("youtube_music_search_songs.json")
+    source = make_source(ContentType.TRACK, artists=())
+    await adapter.search(source, ContentType.TRACK)
+    yt.search.assert_called_once_with("Nightcall", filter="songs", limit=3)
+
+
+async def test_search_empty_returns_empty(adapter, yt):
+    yt.search.return_value = []
+    hits = await adapter.search(make_source(ContentType.TRACK), ContentType.TRACK)
+    assert hits == []
+
+
+async def test_search_wraps_library_error(adapter, yt):
+    yt.search.side_effect = RuntimeError("quota? block? who knows")
+    with pytest.raises(AdapterError):
+        await adapter.search(make_source(ContentType.TRACK), ContentType.TRACK)
