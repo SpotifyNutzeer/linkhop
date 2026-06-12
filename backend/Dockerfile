@@ -1,7 +1,9 @@
-# Beide Basis-Tags gepinnt (uv-Minor + Debian-Release): das Image verspricht
-# gelockte Versionen — floatende Bases würden uv und Debian unabhängig driften
-# lassen, inkl. des Interpreter-Symlinks im kopierten venv.
-FROM ghcr.io/astral-sh/uv:0.9-python3.12-bookworm-slim AS build
+# Beide Stages teilen exakt dieselbe Python-Basis (Tag inkl. Debian-Release
+# gepinnt) — der Interpreter-Symlink im kopierten venv zeigt damit garantiert
+# auf denselben Stand. uv kommt als Binary aus dem distroless uv-Image
+# (Minor gepinnt, passend zum lokal genutzten uv 0.11).
+FROM python:3.12-slim-bookworm AS build
+COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /uvx /bin/
 WORKDIR /app
 # Bytecode beim Build vorkompilieren beschleunigt den Container-Start.
 # copy statt hardlink, weil uv-Cache und /app in unterschiedlichen Layern liegen.
