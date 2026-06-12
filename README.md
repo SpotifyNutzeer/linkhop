@@ -70,8 +70,8 @@ pnpm dev                           # http://localhost:5173, proxied /api → :80
 ```
 
 Then open <http://localhost:5173> and paste a Deezer track URL
-(Deezer works without credentials; Spotify/Tidal need client credentials
-via env vars — see `backend/README.md`).
+(Deezer and YouTube Music work without credentials; Spotify/Tidal need
+client credentials via env vars — see `backend/README.md`).
 
 See [`backend/README.md`](backend/README.md) for the full env-var reference,
 admin CLI (`linkhop-admin key create|list|revoke`) and live-integration
