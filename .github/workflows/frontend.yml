@@ -46,7 +46,7 @@ jobs:
         working-directory: backend
         run: |
           uv sync --locked --no-dev
-          uv run python -c "from linkhop.main import app; import json; json.dump(app.openapi(), open('openapi.json','w'))"
+          uv run --no-sync python -c "from linkhop.main import app; import json; json.dump(app.openapi(), open('openapi.json','w'))"
 
       - name: Generate API schema
         run: pnpm gen:api
@@ -114,7 +114,7 @@ jobs:
         working-directory: backend
         env:
           LINKHOP_DATABASE_URL: "postgresql+asyncpg://linkhop:linkhop@127.0.0.1:5432/linkhop"
-        run: uv run linkhop-admin init-db
+        run: uv run --no-sync linkhop-admin init-db
 
       # Hintergrund-Launches schliessen stdin und disownen, sonst hält bash
       # den Step offen, solange der Kindprozess lebt. wait-on braucht ein
@@ -136,7 +136,7 @@ jobs:
           nohup env \
             LINKHOP_DATABASE_URL="$LINKHOP_DATABASE_URL" \
             LINKHOP_REDIS_URL="$LINKHOP_REDIS_URL" \
-            uv run uvicorn linkhop.main:app --host 127.0.0.1 --port 8080 \
+            uv run --no-sync uvicorn linkhop.main:app --host 127.0.0.1 --port 8080 \
             > uvicorn.log 2>&1 < /dev/null &
           disown
           # /health prüft sowohl Redis als auch Postgres. /services hatte
@@ -265,7 +265,7 @@ jobs:
         working-directory: backend
         run: |
           uv sync --locked --no-dev
-          uv run python -c "from linkhop.main import app; import json; json.dump(app.openapi(), open('openapi.json','w'))"
+          uv run --no-sync python -c "from linkhop.main import app; import json; json.dump(app.openapi(), open('openapi.json','w'))"
 
       - name: Generate schema for image build
         working-directory: frontend
