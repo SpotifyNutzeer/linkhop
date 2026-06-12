@@ -2,10 +2,12 @@ import os
 
 import httpx
 import pytest
+from ytmusicapi import YTMusic
 
 from linkhop.adapters.deezer import DeezerAdapter
 from linkhop.adapters.spotify import SpotifyAdapter
 from linkhop.adapters.tidal import TidalAdapter
+from linkhop.adapters.youtube_music import YouTubeMusicAdapter
 from linkhop.models.domain import ContentType
 from linkhop.url_parser import parse
 
@@ -27,15 +29,16 @@ async def clients():
         yield {
             "spotify": SpotifyAdapter(
                 client=http,
-                client_id=os.environ["LINKHOP_SPOTIFY_CLIENT_ID"],
-                client_secret=os.environ["LINKHOP_SPOTIFY_CLIENT_SECRET"],
+                client_id=os.environ.get("LINKHOP_SPOTIFY_CLIENT_ID", ""),
+                client_secret=os.environ.get("LINKHOP_SPOTIFY_CLIENT_SECRET", ""),
             ),
             "deezer": DeezerAdapter(client=http),
             "tidal": TidalAdapter(
                 client=http,
-                client_id=os.environ["LINKHOP_TIDAL_CLIENT_ID"],
-                client_secret=os.environ["LINKHOP_TIDAL_CLIENT_SECRET"],
+                client_id=os.environ.get("LINKHOP_TIDAL_CLIENT_ID", ""),
+                client_secret=os.environ.get("LINKHOP_TIDAL_CLIENT_SECRET", ""),
             ),
+            "youtube_music": YouTubeMusicAdapter(client=YTMusic()),
         }
 
 
@@ -88,3 +91,35 @@ async def test_spotify_to_tidal_via_isrc(clients):
     assert source.isrc, "Spotify resolve returned no ISRC — ID rotated?"
     hits = await clients["tidal"].search(source, ContentType(parsed.type))
     assert any(h.match == "isrc" for h in hits)
+
+
+# Rick Astley "Never Gonna Give You Up" — einer der stabilsten Katalog-Einträge
+# auf YouTube überhaupt; swap if the video ever disappears.
+_YTM_TRACK_URL = "https://music.youtube.com/watch?v=dQw4w9WgXcQ"
+
+
+async def test_youtube_music_resolve_track(clients):
+    parsed = parse(_YTM_TRACK_URL)
+    source = await clients["youtube_music"].resolve(parsed)
+    assert source is not None
+    assert source.title
+    assert source.duration_ms
+
+
+async def test_spotify_to_youtube_music_metadata(clients):
+    # YT Music hat kein ISRC — es darf nur metadata-Hits geben, deren Scoring
+    # übernimmt die Pipeline (hier nicht unter Test).
+    parsed = parse("https://open.spotify.com/track/6habFhsOp2NvshLv26DqMb")
+    source = await clients["spotify"].resolve(parsed)
+    assert source is not None
+    hits = await clients["youtube_music"].search(source, ContentType(parsed.type))
+    assert hits
+    assert all(h.match == "metadata" for h in hits)
+
+
+async def test_youtube_music_to_deezer_metadata(clients):
+    parsed = parse(_YTM_TRACK_URL)
+    source = await clients["youtube_music"].resolve(parsed)
+    assert source is not None
+    hits = await clients["deezer"].search(source, ContentType(parsed.type))
+    assert hits
