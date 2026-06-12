@@ -41,3 +41,12 @@ def test_services_excludes_disabled(monkeypatch):
     body = resp.json()
     ids = {s["id"] for s in body["services"]}
     assert "spotify" not in ids
+
+
+def test_services_excludes_disabled_youtube_music(monkeypatch):
+    monkeypatch.setenv("LINKHOP_ENABLE_YOUTUBE_MUSIC", "false")
+    app = create_app(Settings())
+    with TestClient(app) as client:
+        resp = client.get("/api/v1/services")
+    ids = {s["id"] for s in resp.json()["services"]}
+    assert "youtube_music" not in ids
