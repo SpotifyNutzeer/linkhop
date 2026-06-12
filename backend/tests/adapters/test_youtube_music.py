@@ -128,11 +128,11 @@ async def test_resolve_wraps_library_error(adapter, yt):
 async def test_search_track(adapter, yt):
     yt.search.return_value = fix("youtube_music_search_songs.json")
     hits = await adapter.search(make_source(ContentType.TRACK), ContentType.TRACK)
-    # 4 Fixture-Einträge: items[:3] schneidet den 4. ab, der kaputte 3. (ohne
-    # videoId) wird übersprungen → genau 2 Hits.
-    assert len(hits) == 2
+    # 4 Fixture-Einträge → kaputter 3. wird übersprungen, der 4. rückt nach → genau 3 Hits.
+    assert len(hits) == 3
     assert hits[0].id == "AjgWa4BLvz4"
     assert hits[0].url == "https://music.youtube.com/watch?v=AjgWa4BLvz4"
+    assert hits[2].id == "zTbf3RKvIbM"
     assert all(h.match == "metadata" and h.confidence == 0.0 for h in hits)
     yt.search.assert_called_once_with("Kavinsky Nightcall", filter="songs", limit=3)
 

@@ -26,6 +26,11 @@ def _artist_names(artists: list[dict[str, Any]] | None) -> tuple[str, ...]:
 class YouTubeMusicAdapter:
     service_id = "youtube_music"
     capabilities = AdapterCapabilities(track=True, album=True, artist=True)
+    _FILTERS: ClassVar[dict[ContentType, str]] = {
+        ContentType.TRACK: "songs",
+        ContentType.ALBUM: "albums",
+        ContentType.ARTIST: "artists",
+    }
 
     def __init__(self, client: Any) -> None:
         # `Any` statt `YTMusic`: Tests injizieren ein MagicMock, und der Adapter
@@ -114,12 +119,6 @@ class YouTubeMusicAdapter:
             artwork=_best_thumbnail(data.get("thumbnails")),
         )
 
-    _FILTERS: ClassVar[dict[ContentType, str]] = {
-        ContentType.TRACK: "songs",
-        ContentType.ALBUM: "albums",
-        ContentType.ARTIST: "artists",
-    }
-
     async def search(self, meta: ResolvedContent, target_type: ContentType) -> list[SearchHit]:
         # Kein ISRC/UPC bei YouTube Music — immer Freitext-Suche, die Pipeline
         # bewertet die Kandidaten anschließend per Metadaten-Scoring.
@@ -132,11 +131,15 @@ class YouTubeMusicAdapter:
             query = f"{meta.artists[0]} {meta.title}"
         items = await self._call(self._yt.search, query, filter=filter_, limit=3) or []
         hits: list[SearchHit] = []
-        # ytmusicapi behandelt limit als Richtwert, nicht als harte Grenze.
-        for item in items[:3]:
+        # ytmusicapi behandelt limit als Richtwert: erst kaputte Einträge
+        # überspringen, dann auf 3 kappen — sonst kostet ein defekter Eintrag
+        # unter den ersten drei einen validen Kandidaten weiter hinten.
+        for item in items:
             hit = self._to_hit(item, target_type)
             if hit is not None:
                 hits.append(hit)
+                if len(hits) == 3:
+                    break
         return hits
 
     def _to_hit(self, item: dict[str, Any], target_type: ContentType) -> SearchHit | None:
@@ -151,6 +154,9 @@ class YouTubeMusicAdapter:
         browse_id = item.get("browseId")
         if not browse_id:
             return None
+        # Album-Hits verlinken auf /browse/<id> — die playlist?list=-Form aus
+        # resolve() bräuchte einen zusätzlichen get_album-Call pro Kandidat.
+        # Beide URL-Formen sind gültig; bewusste Abweichung.
         url = (
             f"{_BASE}/channel/{browse_id}"
             if target_type == ContentType.ARTIST
