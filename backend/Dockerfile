@@ -7,8 +7,12 @@ COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /uvx /bin/
 WORKDIR /app
 # Bytecode beim Build vorkompilieren beschleunigt den Container-Start.
 # copy statt hardlink, weil uv-Cache und /app in unterschiedlichen Layern liegen.
+# system-Python erzwingen: ein von uv gemanagter Interpreter läge außerhalb
+# von /app/.venv und würde beim Stage-Copy zum baumelnden Symlink.
 ENV UV_COMPILE_BYTECODE=1 \
-    UV_LINK_MODE=copy
+    UV_LINK_MODE=copy \
+    UV_PYTHON_PREFERENCE=system \
+    UV_PYTHON_DOWNLOADS=never
 # Erst Manifest + Lock, Code später: der Dependency-Layer überlebt
 # Code-Änderungen im Docker-Cache.
 COPY pyproject.toml uv.lock ./
