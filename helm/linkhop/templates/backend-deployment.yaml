@@ -47,6 +47,8 @@ spec:
               value: {{ .Values.config.enableDeezer | quote }}
             - name: LINKHOP_ENABLE_TIDAL
               value: {{ .Values.config.enableTidal | quote }}
+            - name: LINKHOP_ENABLE_YOUTUBE_MUSIC
+              value: {{ .Values.config.enableYoutubeMusic | quote }}
             - name: LINKHOP_FORWARDED_ALLOW_IPS
               value: {{ .Values.backend.forwardedAllowIps | quote }}
           livenessProbe:

@@ -52,6 +52,8 @@ config:
   enableSpotify: true
   enableDeezer: true
   enableTidal: true
+  # -- YouTube Music braucht keine Credentials (unauthentifizierte ytmusicapi).
+  enableYoutubeMusic: true
 
 # -- Sensitive credentials
 secrets:
