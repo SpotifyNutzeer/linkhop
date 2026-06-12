@@ -1,7 +1,7 @@
 # linkhop-backend
 
 FastAPI service that converts music-streaming URLs between providers
-(Spotify, Deezer in V1) via ISRC/UPC/metadata matching.
+(Spotify, Deezer, Tidal, YouTube Music) via ISRC/UPC/metadata matching.
 
 ## Development
 
@@ -80,11 +80,11 @@ Run with coverage:
 pytest --cov=linkhop --cov-report=term-missing -v
 ```
 
-Live integration tests against real Spotify/Deezer/Tidal APIs are skipped
+Live integration tests against real Spotify/Deezer/Tidal/YouTube-Music APIs are skipped
 by default; enable them with `LINKHOP_LIVE_TESTS=1` and the matching
 credentials:
 
 - `LINKHOP_SPOTIFY_CLIENT_ID` / `LINKHOP_SPOTIFY_CLIENT_SECRET`
 - `LINKHOP_TIDAL_CLIENT_ID` / `LINKHOP_TIDAL_CLIENT_SECRET`
 
-Deezer needs no credentials.
+Deezer and YouTube Music need no credentials.
