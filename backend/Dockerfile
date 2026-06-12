@@ -1,4 +1,7 @@
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS build
+# Beide Basis-Tags gepinnt (uv-Minor + Debian-Release): das Image verspricht
+# gelockte Versionen — floatende Bases würden uv und Debian unabhängig driften
+# lassen, inkl. des Interpreter-Symlinks im kopierten venv.
+FROM ghcr.io/astral-sh/uv:0.9-python3.12-bookworm-slim AS build
 WORKDIR /app
 # Bytecode beim Build vorkompilieren beschleunigt den Container-Start.
 # copy statt hardlink, weil uv-Cache und /app in unterschiedlichen Layern liegen.
@@ -11,7 +14,7 @@ RUN uv sync --locked --no-dev --no-install-project --no-editable
 COPY src ./src
 RUN uv sync --locked --no-dev --no-editable
 
-FROM python:3.12-slim
+FROM python:3.12-slim-bookworm
 # Python-Runtime-Flags: ohne PYTHONUNBUFFERED sitzen stdout-Lines in Buffern,
 # wenn stdout eine Pipe ist (immer unter Docker) — bei Crash verliert man die
 # letzten JSON-Log-Records. PYTHONDONTWRITEBYTECODE spart Schreibzugriffe im
