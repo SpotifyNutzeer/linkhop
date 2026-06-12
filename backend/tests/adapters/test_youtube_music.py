@@ -61,7 +61,8 @@ async def test_resolve_track(adapter, yt):
 
 async def test_resolve_track_unplayable_returns_none(adapter, yt):
     yt.get_song.return_value = {
-        "playabilityStatus": {"status": "ERROR", "reason": "Video unavailable"}
+        "playabilityStatus": {"status": "ERROR", "reason": "Video unavailable"},
+        "videoDetails": {"videoId": "gone4w9WgXcQ", "title": "Gone", "lengthSeconds": "1"},
     }
     result = await adapter.resolve(ParsedUrl("youtube_music", "track", "gone4w9WgXcQ"))
     assert result is None
@@ -106,6 +107,15 @@ async def test_resolve_artist(adapter, yt):
     assert result.title == "Kavinsky"
     assert result.artists == ("Kavinsky",)
     assert result.url == f"https://music.youtube.com/channel/{_CHANNEL_ID}"
+
+
+async def test_resolve_album_without_audio_playlist_falls_back_to_browse_url(adapter, yt):
+    album = fix("youtube_music_album.json")
+    del album["audioPlaylistId"]
+    yt.get_album.return_value = album
+    result = await adapter.resolve(ParsedUrl("youtube_music", "album", _BROWSE_ID))
+    assert result is not None
+    assert result.url == f"https://music.youtube.com/browse/{_BROWSE_ID}"
 
 
 async def test_resolve_wraps_library_error(adapter, yt):

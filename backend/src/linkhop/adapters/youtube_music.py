@@ -31,13 +31,18 @@ class YouTubeMusicAdapter:
         # `Any` statt `YTMusic`: Tests injizieren ein MagicMock, und der Adapter
         # nutzt ohnehin nur vier Methoden der Library.
         self._yt = client
+        # ytmusicapi teilt eine requests.Session, die nicht thread-sicher ist.
+        # Der Lock serialisiert alle Library-Aufrufe — bei der erwarteten Last
+        # (wenige Calls pro Konvertierung) ist das billiger als Client-pro-Call.
+        self._lock = asyncio.Lock()
 
     async def _call(self, fn: Callable[..., Any], /, *args: Any, **kwargs: Any) -> Any:
         # ytmusicapi ist synchron (requests-basiert); to_thread hält den Event-Loop
         # frei. Library-Exceptions sind undifferenziert → pauschal AdapterError,
         # die Pipeline degradiert damit pro Ziel statt die Konvertierung zu killen.
         try:
-            return await asyncio.to_thread(fn, *args, **kwargs)
+            async with self._lock:
+                return await asyncio.to_thread(fn, *args, **kwargs)
         except Exception as e:
             name = getattr(fn, "__name__", "call")
             raise AdapterError("youtube_music", f"{name}: {e}") from e
@@ -55,7 +60,7 @@ class YouTubeMusicAdapter:
         data = await self._call(self._yt.get_song, video_id) or {}
         details = data.get("videoDetails") or {}
         status = (data.get("playabilityStatus") or {}).get("status")
-        if status != "OK" or not details:
+        if status != "OK" or not details.get("videoId") or not details.get("title"):
             return None
         length = details.get("lengthSeconds")
         vid = details["videoId"]
@@ -80,7 +85,7 @@ class YouTubeMusicAdapter:
             if not browse_id:
                 return None
         data = await self._call(self._yt.get_album, browse_id)
-        if not data:
+        if not data or not data.get("title"):
             return None
         playlist_id = data.get("audioPlaylistId")
         url = (
