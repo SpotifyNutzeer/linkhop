@@ -20,7 +20,7 @@ dependencies = [
     "ytmusicapi==1.12.*",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pytest==9.0.*",
     "pytest-asyncio==1.3.*",
