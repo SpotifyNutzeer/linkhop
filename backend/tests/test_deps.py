@@ -1,6 +1,6 @@
 import httpx
 
-from linkhop.adapters import DeezerAdapter, SpotifyAdapter, TidalAdapter
+from linkhop.adapters import DeezerAdapter, SpotifyAdapter, TidalAdapter, YouTubeMusicAdapter
 from linkhop.config import Settings
 from linkhop.deps import build_adapter_map
 
@@ -41,6 +41,7 @@ async def test_all_flags_off_returns_empty(monkeypatch):
     monkeypatch.setenv("LINKHOP_ENABLE_SPOTIFY", "false")
     monkeypatch.setenv("LINKHOP_ENABLE_DEEZER", "false")
     monkeypatch.setenv("LINKHOP_ENABLE_TIDAL", "false")
+    monkeypatch.setenv("LINKHOP_ENABLE_YOUTUBE_MUSIC", "false")
     s = Settings()
     async with httpx.AsyncClient() as c:
         m = build_adapter_map(s, c)
@@ -63,3 +64,19 @@ async def test_tidal_skipped_when_credentials_missing():
     async with httpx.AsyncClient() as c:
         m = build_adapter_map(s, c)
         assert "tidal" not in m
+
+
+async def test_youtube_music_registered_by_default():
+    # Auth-frei: kein Credential-Check, Default-Settings reichen.
+    s = Settings()
+    async with httpx.AsyncClient() as c:
+        m = build_adapter_map(s, c)
+        assert isinstance(m["youtube_music"], YouTubeMusicAdapter)
+
+
+async def test_youtube_music_disabled(monkeypatch):
+    monkeypatch.setenv("LINKHOP_ENABLE_YOUTUBE_MUSIC", "false")
+    s = Settings()
+    async with httpx.AsyncClient() as c:
+        m = build_adapter_map(s, c)
+        assert "youtube_music" not in m

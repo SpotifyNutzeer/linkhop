@@ -18,6 +18,10 @@ def test_services_lists_enabled_adapters(monkeypatch):
     ids = {s["id"] for s in body["services"]}
     assert "spotify" in ids
     assert "deezer" in ids
+    assert "youtube_music" in ids
+    ytm = next(s for s in body["services"] if s["id"] == "youtube_music")
+    assert ytm["name"] == "YouTube Music"
+    assert set(ytm["capabilities"]) == {"track", "album", "artist"}
     # Stärker als reine ID-Prüfung — fängt Regressionen ab, bei denen name
     # leer bliebe oder capabilities versehentlich auf [] kollabiert.
     spotify = next(s for s in body["services"] if s["id"] == "spotify")

@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     enable_spotify: bool = True
     enable_deezer: bool = True
     enable_tidal: bool = True
+    enable_youtube_music: bool = True
 
     spotify_client_id: str = ""
     spotify_client_secret: str = ""

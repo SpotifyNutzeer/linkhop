@@ -1,8 +1,15 @@
 from __future__ import annotations
 
 import httpx
+from ytmusicapi import YTMusic
 
-from linkhop.adapters import DeezerAdapter, ServiceAdapter, SpotifyAdapter, TidalAdapter
+from linkhop.adapters import (
+    DeezerAdapter,
+    ServiceAdapter,
+    SpotifyAdapter,
+    TidalAdapter,
+    YouTubeMusicAdapter,
+)
 from linkhop.config import Settings
 
 
@@ -25,4 +32,8 @@ def build_adapter_map(settings: Settings, http: httpx.AsyncClient) -> dict[str, 
             client_id=settings.tidal_client_id,
             client_secret=settings.tidal_client_secret,
         )
+    if settings.enable_youtube_music:
+        # Auth-frei, kein Credential-Check. YTMusic() initialisiert nur lokale
+        # Header/Session, macht beim Konstruieren keinen Netzwerk-Call.
+        adapters["youtube_music"] = YouTubeMusicAdapter(client=YTMusic())
     return adapters
