@@ -39,7 +39,7 @@ Playlists are out of scope for V1.
 
 | Layer       | Tech                                                          |
 | ----------- | ------------------------------------------------------------- |
-| Backend     | Python 3.12, FastAPI, SQLAlchemy 2 (async), asyncpg, Alembic  |
+| Backend     | Python 3.12 (uv-managed), FastAPI, SQLAlchemy 2 (async), asyncpg, Alembic |
 | Frontend    | SvelteKit (`adapter-static`), TypeScript, Vite                |
 | Cache       | Redis 7                                                       |
 | Database    | Postgres 16 (CNPG in production)                              |
@@ -49,15 +49,15 @@ Playlists are out of scope for V1.
 
 ## Quick start (local dev)
 
-Backend (needs Python 3.12):
+Backend (needs [uv](https://docs.astral.sh/uv/); Python 3.12 is resolved
+via `backend/.python-version`):
 
 ```bash
 cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+uv sync
 docker-compose up -d               # Postgres + Redis only
-alembic upgrade head
-uvicorn linkhop.main:app --reload --port 8080
+uv run alembic upgrade head
+uv run uvicorn linkhop.main:app --reload --port 8080
 ```
 
 Frontend (needs Node 22 + pnpm):

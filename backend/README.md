@@ -5,12 +5,11 @@ FastAPI service that converts music-streaming URLs between providers
 
 ## Development
 
-Set up a virtualenv and install the package with dev extras:
+Install [uv](https://docs.astral.sh/uv/), then sync the environment
+(creates `.venv` from `uv.lock`, including the dev dependency group):
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
+uv sync
 ```
 
 Start Postgres and Redis via docker-compose. Note that `docker-compose.yml`
@@ -21,17 +20,17 @@ Start Postgres and Redis via docker-compose. Note that `docker-compose.yml`
 docker-compose up -d
 ```
 
-Apply the database schema (run from the host venv, not inside a container —
+Apply the database schema (run on the host via `uv run`, not inside a container —
 the compose services do not ship alembic):
 
 ```bash
-alembic upgrade head
+uv run alembic upgrade head
 ```
 
 Run the API with auto-reload:
 
 ```bash
-uvicorn linkhop.main:app --reload --port 8080
+uv run uvicorn linkhop.main:app --reload --port 8080
 ```
 
 The OpenAPI docs are served at `http://localhost:8080/api/v1/docs`.
@@ -57,27 +56,27 @@ so a plain `docker-compose up -d` + `uvicorn …` works without overrides.
 
 ## Admin CLI
 
-The `linkhop-admin` console script (installed by `pip install -e .`)
+The `linkhop-admin` console script (available via `uv run`)
 manages API keys:
 
 ```bash
-linkhop-admin key create --note "local dev"
-linkhop-admin key list
-linkhop-admin key revoke <key-id>
+uv run linkhop-admin key create --note "local dev"
+uv run linkhop-admin key list
+uv run linkhop-admin key revoke <key-id>
 ```
 
-Run `linkhop-admin --help` for the full command reference.
+Run `uv run linkhop-admin --help` for the full command reference.
 
 ## Tests
 
 ```bash
-pytest -v
+uv run pytest -v
 ```
 
 Run with coverage:
 
 ```bash
-pytest --cov=linkhop --cov-report=term-missing -v
+uv run pytest --cov=linkhop --cov-report=term-missing -v
 ```
 
 Live integration tests against real Spotify/Deezer/Tidal/YouTube-Music APIs are skipped
