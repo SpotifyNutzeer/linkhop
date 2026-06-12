@@ -94,6 +94,7 @@ Nur Host `music.youtube.com`:
 |---|---|---|
 | `/watch?v=<id>` | track | ID steckt im Query-Parameter — der Parser braucht erstmals Query-Parsing (`parse_qs`) |
 | `/playlist?list=OLAK5uy_<…>` | album | nur `OLAK5uy_`-Präfix; `PL…` u. a. → `UnsupportedUrlError` |
+| `/browse/<MPREb_…>` | album | linkhop erzeugt selbst `/browse/`-Ziel-URLs für Album-Suchtreffer (dort ist nur die Browse-ID bekannt) — der Round-Trip eigener Links muss parsen |
 | `/channel/<UC…>` | artist | |
 
 ## Matching und Datenfluss
