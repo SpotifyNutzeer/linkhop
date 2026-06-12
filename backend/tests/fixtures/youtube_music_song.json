@@ -1,0 +1,16 @@
+{
+  "playabilityStatus": {"status": "OK"},
+  "videoDetails": {
+    "videoId": "AjgWa4BLvz4",
+    "title": "Nightcall",
+    "lengthSeconds": "257",
+    "author": "Kavinsky",
+    "channelId": "UC0FvDIzS3wnvBJN1DyGZv6g",
+    "thumbnail": {
+      "thumbnails": [
+        {"url": "https://i.ytimg.com/vi/AjgWa4BLvz4/default.jpg", "width": 120, "height": 90},
+        {"url": "https://i.ytimg.com/vi/AjgWa4BLvz4/maxresdefault.jpg", "width": 1280, "height": 720}
+      ]
+    }
+  }
+}

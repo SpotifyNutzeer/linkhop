@@ -1,0 +1,12 @@
+{
+  "title": "OutRun",
+  "type": "Album",
+  "year": "2013",
+  "artists": [{"name": "Kavinsky", "id": "UC0FvDIzS3wnvBJN1DyGZv6g"}],
+  "audioPlaylistId": "OLAK5uy_kkmbD9ZRiBSpYRrrFiEW8u17rPWLKecJk",
+  "thumbnails": [
+    {"url": "https://lh3.googleusercontent.com/album-small", "width": 226, "height": 226},
+    {"url": "https://lh3.googleusercontent.com/album-large", "width": 544, "height": 544}
+  ],
+  "tracks": []
+}
