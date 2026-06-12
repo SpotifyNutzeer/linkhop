@@ -43,24 +43,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: "backend/uv.lock"
 
+      # --locked macht Lock-Drift (pyproject geändert, Lock nicht) zum CI-Fehler.
       - name: Install dependencies
-        run: pip install -e '.[dev]'
+        run: uv sync --locked
 
       - name: Lint
-        run: ruff check src tests
+        run: uv run ruff check src tests
 
       - name: Type check
-        run: mypy src
+        run: uv run mypy src
 
       - name: Run migrations
-        run: alembic upgrade head
+        run: uv run alembic upgrade head
 
       - name: Run tests
-        run: pytest --tb=short -q
+        run: uv run pytest --tb=short -q
 
   image:
     runs-on: ubuntu-latest
