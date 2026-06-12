@@ -33,9 +33,11 @@ jobs:
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
 
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: '3.12'
+          enable-cache: true
+          cache-dependency-glob: "backend/uv.lock"
 
       - name: Install frontend deps
         run: pnpm install --frozen-lockfile
@@ -43,8 +45,8 @@ jobs:
       - name: Export backend openapi.json
         working-directory: backend
         run: |
-          pip install -e .
-          python -c "from linkhop.main import app; import json; json.dump(app.openapi(), open('openapi.json','w'))"
+          uv sync --locked --no-dev
+          uv run python -c "from linkhop.main import app; import json; json.dump(app.openapi(), open('openapi.json','w'))"
 
       - name: Generate API schema
         run: pnpm gen:api
@@ -85,9 +87,11 @@ jobs:
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
 
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: '3.12'
+          enable-cache: true
+          cache-dependency-glob: "backend/uv.lock"
 
       - name: Install frontend deps
         run: pnpm install --frozen-lockfile
@@ -104,13 +108,13 @@ jobs:
 
       - name: Install backend
         working-directory: backend
-        run: pip install -e .
+        run: uv sync --locked --no-dev
 
       - name: Initialise backend schema
         working-directory: backend
         env:
           LINKHOP_DATABASE_URL: "postgresql+asyncpg://linkhop:linkhop@127.0.0.1:5432/linkhop"
-        run: linkhop-admin init-db
+        run: uv run linkhop-admin init-db
 
       # Hintergrund-Launches schliessen stdin und disownen, sonst hält bash
       # den Step offen, solange der Kindprozess lebt. wait-on braucht ein
@@ -132,7 +136,7 @@ jobs:
           nohup env \
             LINKHOP_DATABASE_URL="$LINKHOP_DATABASE_URL" \
             LINKHOP_REDIS_URL="$LINKHOP_REDIS_URL" \
-            uvicorn linkhop.main:app --host 127.0.0.1 --port 8080 \
+            uv run uvicorn linkhop.main:app --host 127.0.0.1 --port 8080 \
             > uvicorn.log 2>&1 < /dev/null &
           disown
           # /health prüft sowohl Redis als auch Postgres. /services hatte
@@ -240,9 +244,11 @@ jobs:
 
       # Needed to export openapi.json before generating the TS client that
       # ships in the image build context.
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: '3.12'
+          enable-cache: true
+          cache-dependency-glob: "backend/uv.lock"
 
       - uses: docker/login-action@v3
         with:
@@ -258,8 +264,8 @@ jobs:
       - name: Export backend openapi.json
         working-directory: backend
         run: |
-          pip install -e .
-          python -c "from linkhop.main import app; import json; json.dump(app.openapi(), open('openapi.json','w'))"
+          uv sync --locked --no-dev
+          uv run python -c "from linkhop.main import app; import json; json.dump(app.openapi(), open('openapi.json','w'))"
 
       - name: Generate schema for image build
         working-directory: frontend
