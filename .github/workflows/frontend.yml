@@ -261,6 +261,11 @@ jobs:
       - name: Lowercase owner
         run: echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
 
+      - name: Derive image version (strip leading v)
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: echo "VERSION=${TAG_NAME#v}" >> "$GITHUB_ENV"
+
       - name: Export backend openapi.json
         working-directory: backend
         run: |
@@ -279,5 +284,5 @@ jobs:
           context: frontend
           push: true
           tags: |
-            ghcr.io/${{ env.OWNER_LC }}/linkhop-frontend:${{ github.event.release.tag_name }}
+            ghcr.io/${{ env.OWNER_LC }}/linkhop-frontend:${{ env.VERSION }}
             ghcr.io/${{ env.OWNER_LC }}/linkhop-frontend:latest

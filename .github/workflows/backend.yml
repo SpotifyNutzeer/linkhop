@@ -86,10 +86,15 @@ jobs:
       - name: Lowercase owner
         run: echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
 
+      - name: Derive image version (strip leading v)
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: echo "VERSION=${TAG_NAME#v}" >> "$GITHUB_ENV"
+
       - uses: docker/build-push-action@v5
         with:
           context: backend
           push: true
           tags: |
-            ghcr.io/${{ env.OWNER_LC }}/linkhop-backend:${{ github.event.release.tag_name }}
+            ghcr.io/${{ env.OWNER_LC }}/linkhop-backend:${{ env.VERSION }}
             ghcr.io/${{ env.OWNER_LC }}/linkhop-backend:latest
