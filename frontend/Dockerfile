@@ -1,5 +1,6 @@
-FROM node:22-alpine AS builder
+FROM node:22.12-alpine AS builder
 WORKDIR /app
+ENV COREPACK_INTEGRITY_KEYS=0
 RUN corepack enable
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
