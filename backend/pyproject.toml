@@ -1,6 +1,6 @@
 [project]
 name = "linkhop"
-version = "0.2.0"
+version = "0.2.1"
 description = "Music-link converter across streaming services"
 requires-python = ">=3.12"
 dependencies = [
