@@ -1,8 +1,7 @@
 FROM node:22.12-alpine AS builder
 WORKDIR /app
-ENV COREPACK_INTEGRITY_KEYS=0
-RUN corepack enable
-COPY package.json pnpm-lock.yaml ./
+RUN npm install -g corepack@latest && corepack enable
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
