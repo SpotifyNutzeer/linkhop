@@ -5,3 +5,9 @@ tests
 .git
 .github
 *.md
+.env*
+.idea
+playwright-report
+test-results
+coverage
+*.log
