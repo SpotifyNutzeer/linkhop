@@ -8,8 +8,8 @@ export default defineConfig({
   resolve: process.env.VITEST ? { conditions: ['browser'] } : undefined,
   server: {
     port: 5173,
-    // Vite 5.4.x (CVE-2025-30208-Fix) blockt Requests mit 403, wenn der
-    // Query-String "://" enthält — genau das, was wir mit ?url=https://…
+    // Vites Dev-Server blockt Requests mit 403, wenn der Query-String "://" enthält (seit Vite 5.4.x, CVE-2025-30208) —
+    // genau das, was wir mit ?url=https://…
     // ständig tun. Nur Dev-Server-Check; adapter-static/Nginx ist nicht
     // betroffen.
     fs: { strict: false },
