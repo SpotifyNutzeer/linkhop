@@ -2,6 +2,21 @@ apiVersion: v1
 entries:
   linkhop:
   - apiVersion: v2
+    appVersion: 0.2.2
+    created: "2026-06-18T16:22:46.696389994Z"
+    dependencies:
+    - condition: redis.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: ~20.x
+    description: Music-link converter across streaming services
+    digest: 6e8cf7fd2f7a08ee781d0ba7b07fd984153a544450c3f7d4c83528efae2a7791
+    name: linkhop
+    type: application
+    urls:
+    - https://github.com/SpotifyNutzeer/linkhop/releases/download/linkhop-0.2.3/linkhop-0.2.3.tgz
+    version: 0.2.3
+  - apiVersion: v2
     appVersion: 0.2.1
     created: "2026-06-13T09:58:02.473846133Z"
     dependencies:
@@ -61,4 +76,4 @@ entries:
     urls:
     - https://github.com/SpotifyNutzeer/linkhop/releases/download/linkhop-0.1.0/linkhop-0.1.0.tgz
     version: 0.1.0
-generated: "2026-06-13T09:58:02.473868626Z"
+generated: "2026-06-18T16:22:46.696409534Z"
