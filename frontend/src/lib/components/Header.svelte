@@ -15,11 +15,16 @@
 <style>
   /* Volle Breite, opakes Mantle, borderlos, kein Scroll-Blur — wie
      Bar.qml (zen) / paul.wtf's Nav.astro. Ersetzt die schwebende
-     Pill-Shell. */
+     Pill-Shell. Feste Höhe (--bar-h) statt content-getrieben: die Bar
+     ERSETZT die obere Kante des Zen-Frame-Rahmens (--viewport-top). */
   .hdr {
     position: sticky;
     top: 0;
-    z-index: 10;
+    /* Über dem Zen-Frame (z-index 60): dessen opake obere Rahmenkante
+       ist --bar-h hoch und würde die Bar sonst übermalen — wie
+       Nav.astro (z-index 70) auf paul.wtf. */
+    z-index: 70;
+    height: var(--bar-h);
     background: var(--mantle);
   }
   .shell {
@@ -27,9 +32,10 @@
     justify-content: space-between;
     align-items: center;
     gap: 1rem;
+    height: 100%;
     max-width: 780px;
     margin: 0 auto;
-    padding: 0.7rem clamp(1rem, 4vw, 2rem);
+    padding: 0 clamp(1rem, 4vw, 2rem);
   }
   .brand {
     display: inline-flex;

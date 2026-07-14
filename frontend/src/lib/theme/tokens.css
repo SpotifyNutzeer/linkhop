@@ -45,6 +45,16 @@
     ui-monospace, 'SF Mono', Menlo, monospace;
 
   color-scheme: light dark;
+
+  /* Zen-Frame: Mantle-Rahmen um den Viewport, konkave Ecken (Frame.qml).
+     --bar-h ist die tatsächliche, fest vergebene Höhe von Header.svelte
+     (.hdr) — die Bar ersetzt die obere Rahmenkante. Header rendert im
+     Root-Layout auf jeder Route, daher braucht --viewport-top hier keinen
+     Fallback auf --frame (anders als bei Apps mit headerlosen Routen). */
+  --frame: 10px;
+  --bar-h: 56px;
+  --viewport-r: 16px;
+  --viewport-top: var(--bar-h);
 }
 
 /* ------------------------------------------------------------------ DARK */
@@ -80,6 +90,10 @@
   --border: var(--surface1);
   --text-muted: var(--subtext0);
   --text-dim: var(--overlay2);
+
+  /* Wallpaper: Firewatch-Ridgelines wie paul.wtf (tokens.css Zeile 100),
+     zeichengenau übernommen — Teal-Mond + vier Hügelketten auf Crust. */
+  --wallpaper: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 900' preserveAspectRatio='xMidYMax slice'><circle cx='1190' cy='300' r='110' fill='%2394e2d5' opacity='0.05'/><circle cx='1190' cy='300' r='72' fill='%2394e2d5' opacity='0.07'/><path d='M0 560 L140 480 L300 545 L470 430 L640 530 L820 455 L990 540 L1160 470 L1330 550 L1470 500 L1600 555 L1600 900 L0 900 Z' fill='%231c2030' opacity='0.55'/><path d='M0 640 L180 560 L340 625 L520 540 L720 630 L900 560 L1090 645 L1280 575 L1440 640 L1600 590 L1600 900 L0 900 Z' fill='%23181d29' opacity='0.8'/><path d='M0 730 L200 655 L380 715 L580 640 L790 725 L1000 660 L1210 730 L1420 670 L1600 720 L1600 900 L0 900 Z' fill='%23131622'/><path d='M0 810 L240 750 L460 800 L700 740 L950 805 L1200 750 L1430 800 L1600 765 L1600 900 L0 900 Z' fill='%230d0d15'/></svg>");
 }
 
 /* ------------------------------------------------------------------ LIGHT */
@@ -117,6 +131,11 @@
      für aria-hidden/Deko erlaubt. */
   --text-muted: var(--subtext1);
   --text-dim: var(--subtext1);
+
+  /* Wallpaper: identische Pfade wie Mocha, nur umgefärbt — Mond in Teal
+     Latte-Ton, Hügel von hinten nach vorn heller werdendes Blaugrau
+     (letzte zwei Ketten opak, wie im Mocha-Original). */
+  --wallpaper: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 900' preserveAspectRatio='xMidYMax slice'><circle cx='1190' cy='300' r='110' fill='%23179299' opacity='0.06'/><circle cx='1190' cy='300' r='72' fill='%23179299' opacity='0.08'/><path d='M0 560 L140 480 L300 545 L470 430 L640 530 L820 455 L990 540 L1160 470 L1330 550 L1470 500 L1600 555 L1600 900 L0 900 Z' fill='%23d3d8e2' opacity='0.55'/><path d='M0 640 L180 560 L340 625 L520 540 L720 630 L900 560 L1090 645 L1280 575 L1440 640 L1600 590 L1600 900 L0 900 Z' fill='%23c9cfdc' opacity='0.8'/><path d='M0 730 L200 655 L380 715 L580 640 L790 725 L1000 660 L1210 730 L1420 670 L1600 720 L1600 900 L0 900 Z' fill='%23bfc6d4'/><path d='M0 810 L240 750 L460 800 L700 740 L950 805 L1200 750 L1430 800 L1600 765 L1600 900 L0 900 Z' fill='%23b0b7c7'/></svg>");
 }
 
 /* ----------------------------------------------------------- GLOBAL BASE */
@@ -150,6 +169,24 @@ body {
 body {
   background: var(--canvas);
   overflow-x: hidden;
+}
+
+/* „Wallpaper": Firewatch-Ridgelines wie paul.wtf — fast tonwertgleiche
+   Hügelketten über dem Crust, dazu ein blasser Teal-Mond. Fixed, liegt
+   hinter allem Inhalt im Viewport; --wallpaper wechselt automatisch mit
+   dem Theme-Toggle (Mocha/Latte, s. o.). NIEMALS mit
+   box-shadow: 0 0 0 100vmax kombinieren (bricht Tile-Rasterization in
+   Chromium bei Full-Page-Rendering, auf paul.wtf verifiziert). */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--wallpaper);
+  background-repeat: no-repeat;
+  background-position: bottom center;
+  background-size: cover;
 }
 
 :focus-visible {
