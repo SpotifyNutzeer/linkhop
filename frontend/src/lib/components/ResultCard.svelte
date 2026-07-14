@@ -19,13 +19,6 @@
         alt={`Cover: ${result.source.title}`}
         loading="lazy"
       />
-      <img
-        class="bleed"
-        src={result.source.artwork}
-        alt=""
-        aria-hidden="true"
-        loading="lazy"
-      />
     {:else}
       <div class="cover placeholder" aria-hidden="true"></div>
     {/if}
@@ -48,19 +41,20 @@
 </article>
 
 <style>
+  /* Fenster-Primitiv: opak (base), borderlos, Schatten nur hier — die
+     ResultCard ist die einzige freie Card auf der Seite. Der blaue
+     Blur-„Bleed" hinter dem Cover war Liquid-Glass-Vokabular und
+     entfällt ersatzlos. */
   .card {
     position: relative;
     display: flex;
     gap: 1.25rem;
     padding: 1.25rem;
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
+    background: var(--base);
     border-radius: var(--r-xl);
-    backdrop-filter: blur(32px) saturate(180%);
-    -webkit-backdrop-filter: blur(32px) saturate(180%);
-    box-shadow: var(--glass-shadow);
+    box-shadow: var(--shadow-card);
     overflow: hidden;
-    animation: card-in var(--dur-slow) var(--ease-out);
+    animation: card-in var(--dur) var(--ease-spring);
   }
   @keyframes card-in {
     from { opacity: 0; transform: translateY(6px); }
@@ -77,25 +71,10 @@
     height: 100%;
     border-radius: var(--r-md);
     object-fit: cover;
-    background: var(--glass-bg-strong);
-    box-shadow:
-      0 1px 0 0 rgba(255, 255, 255, 0.3) inset,
-      0 10px 24px -10px rgba(0, 0, 0, 0.5);
-  }
-  .bleed {
-    position: absolute;
-    inset: -18px;
-    z-index: -1;
-    width: calc(100% + 36px);
-    height: calc(100% + 36px);
-    object-fit: cover;
-    filter: blur(22px) saturate(160%);
-    opacity: 0.55;
-    pointer-events: none;
+    background: var(--surface0);
   }
   .placeholder {
-    background:
-      linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.02));
+    background: var(--surface0);
   }
   .meta {
     display: flex;
@@ -107,9 +86,10 @@
   .title {
     margin: 0;
     font-family: var(--font-display);
-    font-size: 1.6rem;
-    line-height: 1.1;
-    letter-spacing: -0.01em;
+    font-weight: 700;
+    font-size: 1.4rem;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
     color: var(--text);
     overflow-wrap: anywhere;
   }

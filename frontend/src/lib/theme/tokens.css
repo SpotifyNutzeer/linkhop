@@ -1,110 +1,122 @@
 /*
- * linkhop — Liquid-Glass Token-System
+ * linkhop — Zen Design System
  *
- * Die UI besteht aus halbtransparenten "Glas"-Flächen, die auf einem
- * animierten Gradient-Mesh liegen. Alle Surface-Tokens sind bewusst semi-
- * transparent, damit backdrop-filter sichtbar etwas zu tun hat. Die alten
- * Aliase (--bg, --text, …) bleiben erhalten, damit Tests stabil bleiben,
- * zeigen aber jetzt auf die Liquid-Glass-Werte.
+ * Portiert aus paul.wtf (siehe ~/git/homepage/src/styles/tokens.css), das
+ * wiederum die Zen-Variante von ~/.config/quickshell/Theme.qml umsetzt:
+ * opake Catppuccin-Flächen, null Borders, Teal als einziger Akzent,
+ * JetBrains Mono überall, weicher Schatten nur auf freien Cards.
+ *
+ * linkhop behält seinen Theme-Toggle (auto/dark/light) — dark ist Mocha,
+ * light ist Latte, beide mit identischer Farbdisziplin. Die alten Aliase
+ * (--bg, --bg-surface, --border, --text-muted, --text-dim, …) bleiben für
+ * Test-Stabilität definiert, zeigen aber jetzt auf die Zen-Werte statt auf
+ * Liquid-Glass.
  */
 
 :root {
-  /* Atmospheric blobs — die Seele der Komposition. */
-  --blob-a: 255, 107, 157;   /* sunset pink     */
-  --blob-b: 192, 132, 252;   /* aurora lavender */
-  --blob-c: 94, 234, 212;    /* mint teal       */
+  /* Shape / radii — 16 Cards/Fenster, 10 Inputs/verschachtelte Visuals/
+     Buttons, 8 Chips/Badges. Keine Pills mehr: --r-pill zeigt jetzt auf
+     die Button-Stufe, damit übrig gebliebene Referenzen nicht als Kapsel
+     rendern. */
+  --r-xs: 8px;
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 16px;
+  --r-xl: 16px;
+  --r-pill: 10px;
 
-  /* Shape / radii. */
-  --r-xs: 0.375rem;
-  --r-sm: 0.625rem;
-  --r-md: 1rem;
-  --r-lg: 1.5rem;
-  --r-xl: 1.75rem;
-  --r-pill: 9999px;
+  /* Motion: 200ms Farbe/Opacity, 350ms Position/Größe mit Überschwingen
+     (Jelly), wie Theme.qml. */
+  --ease-out: cubic-bezier(0.45, 0, 0.55, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --dur-fast: 200ms;
+  --dur: 350ms;
+  --dur-slow: 350ms;
 
-  /* Motion. */
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --dur-fast: 160ms;
-  --dur: 260ms;
-  --dur-slow: 420ms;
-
-  /* Typography. */
-  --font-display: 'Instrument Serif', ui-serif, Georgia, serif;
+  /* Typography — JetBrains Mono für alles. */
+  --font-display:
+    'JetBrains Mono Variable', 'JetBrains Mono', 'JetBrainsMono Nerd Font',
+    ui-monospace, 'SF Mono', Menlo, monospace;
   --font-body:
-    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Figtree',
-    system-ui, sans-serif;
+    'JetBrains Mono Variable', 'JetBrains Mono', 'JetBrainsMono Nerd Font',
+    ui-monospace, 'SF Mono', Menlo, monospace;
   --font-mono:
-    ui-monospace, 'Geist Mono', 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+    'JetBrains Mono Variable', 'JetBrains Mono', 'JetBrainsMono Nerd Font',
+    ui-monospace, 'SF Mono', Menlo, monospace;
 
   color-scheme: light dark;
 }
 
 /* ------------------------------------------------------------------ DARK */
 :root[data-theme='dark'] {
-  --canvas: #0b0814;
-  --canvas-2: #120b1e;
+  /* Catppuccin Mocha — Namen wie in Theme.qml / paul.wtf. */
+  --crust:    #11111b;
+  --mantle:   #181825;
+  --base:     #1e1e2e;
+  --surface0: #313244;
+  --surface1: #45475a;
+  --overlay0: #6c7086;
+  --overlay2: #9399b2;
+  --subtext0: #a6adc8;
+  --subtext1: #bac2de;
+  --text:     #cdd6f4;
 
-  --glass-bg: rgba(255, 255, 255, 0.06);
-  --glass-bg-strong: rgba(255, 255, 255, 0.1);
-  --glass-border: rgba(255, 255, 255, 0.16);
-  --glass-rim: rgba(255, 255, 255, 0.32);
-  --glass-shadow:
-    0 1px 0 0 rgba(255, 255, 255, 0.08) inset,
-    0 -1px 0 0 rgba(0, 0, 0, 0.4) inset,
-    0 18px 40px -12px rgba(0, 0, 0, 0.55),
-    0 6px 14px -6px rgba(0, 0, 0, 0.4);
+  --canvas: var(--crust);
+  --canvas-2: var(--mantle);
 
-  --text: rgba(255, 255, 255, 0.94);
-  --text-muted: rgba(255, 255, 255, 0.62);
-  --text-dim: rgba(255, 255, 255, 0.42);
+  --accent: #94e2d5;
+  --accent-contrast: var(--crust);
 
-  --accent: #ffb3cf;
-  --accent-contrast: #3a0a24;
-  --accent-soft: rgba(255, 179, 207, 0.18);
+  --success: #a6e3a1;
+  --warning: #f9e2af;
+  --error: #f38ba8;
 
-  --success: #86efac;
-  --warning: #fde68a;
-  --error: #fca5a5;
-  --error-soft: rgba(252, 165, 165, 0.14);
+  /* Schatten NUR auf freien Cards. */
+  --shadow-card: 0 10px 30px -12px rgba(0, 0, 0, 0.55);
 
-  /* Legacy Aliases — used by tests/components. */
+  /* Legacy Aliase — used by tests/components. */
   --bg: var(--canvas);
-  --bg-surface: var(--glass-bg);
-  --border: var(--glass-border);
+  --bg-surface: var(--base);
+  --border: var(--surface1);
+  --text-muted: var(--subtext0);
+  --text-dim: var(--overlay2);
 }
 
 /* ------------------------------------------------------------------ LIGHT */
 :root[data-theme='light'] {
-  --canvas: #fbf7fb;
-  --canvas-2: #f0eaf3;
+  /* Catppuccin Latte — gleiche Disziplin, helle Flächen. */
+  --crust:    #dce0e8;
+  --mantle:   #e6e9ef;
+  --base:     #eff1f5;
+  --surface0: #ccd0da;
+  --surface1: #bcc0cc;
+  --overlay0: #9ca0b0;
+  --overlay2: #7c7f93;
+  --subtext0: #6c6f85;
+  --subtext1: #5c5f77;
+  --text:     #4c4f69;
 
-  --glass-bg: rgba(255, 255, 255, 0.58);
-  --glass-bg-strong: rgba(255, 255, 255, 0.78);
-  --glass-border: rgba(255, 255, 255, 0.7);
-  --glass-rim: rgba(255, 255, 255, 1);
-  --glass-shadow:
-    0 1px 0 0 rgba(255, 255, 255, 0.9) inset,
-    0 -1px 0 0 rgba(0, 0, 0, 0.06) inset,
-    0 18px 40px -14px rgba(80, 40, 90, 0.22),
-    0 6px 14px -6px rgba(80, 40, 90, 0.12);
+  --canvas: var(--crust);
+  --canvas-2: var(--mantle);
 
-  --text: rgba(20, 14, 28, 0.92);
-  --text-muted: rgba(20, 14, 28, 0.62);
-  --text-dim: rgba(20, 14, 28, 0.44);
+  --accent: #179299;
+  --accent-contrast: var(--base);
 
-  --accent: #b8165a;
-  --accent-contrast: #ffffff;
-  --accent-soft: rgba(184, 22, 90, 0.12);
+  --success: #40a02b;
+  --warning: #df8e1d;
+  --error: #d20f39;
 
-  --success: #15803d;
-  --warning: #a16207;
-  --error: #b91c1c;
-  --error-soft: rgba(185, 28, 28, 0.08);
+  --shadow-card: 0 10px 30px -12px rgba(76, 79, 105, 0.25);
 
   --bg: var(--canvas);
-  --bg-surface: var(--glass-bg);
-  --border: var(--glass-border);
+  --bg-surface: var(--base);
+  --border: var(--surface1);
+  /* Latte-Korrektur: overlay2/subtext0 erreichen auf crust/mantle/base
+     kein 4.5:1 (gemessen 3.0–4.4:1) — anders als in Mocha. Gedämpfter
+     Content-Text nutzt hier subtext1 (oder dunkler); overlay2 bleibt nur
+     für aria-hidden/Deko erlaubt. */
+  --text-muted: var(--subtext1);
+  --text-dim: var(--subtext1);
 }
 
 /* ----------------------------------------------------------- GLOBAL BASE */
@@ -114,6 +126,10 @@
   box-sizing: border-box;
 }
 
+html {
+  scrollbar-color: var(--surface1) var(--crust);
+}
+
 html,
 body {
   margin: 0;
@@ -121,54 +137,19 @@ body {
   min-height: 100vh;
   color: var(--text);
   font-family: var(--font-body);
-  font-size: 16px;
-  line-height: 1.5;
+  font-size: 15.5px;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
+/* Flacher Canvas — kein Gradient-Mesh, kein Noise-Overlay. Die Fläche
+   trennt sich über die Palette-Leiter (crust → mantle → base), nicht
+   über atmosphärische Blobs. */
 body {
   background: var(--canvas);
-  background-attachment: fixed;
   overflow-x: hidden;
-}
-
-/* Atmospheric gradient mesh — applied by +layout.svelte's body::before
-   via global selectors because <style> in components is scoped. */
-body::before,
-body::after {
-  content: '';
-  position: fixed;
-  inset: -20vmax;
-  z-index: -2;
-  pointer-events: none;
-}
-
-body::before {
-  background:
-    radial-gradient(42vmax 42vmax at 18% 22%, rgba(var(--blob-a), 0.55), transparent 62%),
-    radial-gradient(48vmax 48vmax at 82% 18%, rgba(var(--blob-b), 0.5), transparent 64%),
-    radial-gradient(52vmax 52vmax at 60% 92%, rgba(var(--blob-c), 0.42), transparent 66%);
-  filter: blur(60px) saturate(140%);
-  /* Static on purpose: an animated full-viewport blur forces every
-     backdrop-filter surface to recompute each frame, pinning the GPU. */
-}
-
-:root[data-theme='light'] body::before {
-  opacity: 0.9;
-}
-
-/* Subtle grain for depth — avoids the plastic-smooth look. */
-body::after {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.35 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-  opacity: 0.09;
-  mix-blend-mode: overlay;
-}
-
-:root[data-theme='light'] body::after {
-  opacity: 0.12;
-  mix-blend-mode: multiply;
 }
 
 :focus-visible {
@@ -182,12 +163,21 @@ body::after {
   color: var(--accent-contrast);
 }
 
-/* Glass surface primitive — reused across components. */
+/* Fenster-Primitive: opak, borderlos, weicher Schatten. Ersetzt die alte
+   .glass-Klasse (rgba-Fläche + backdrop-filter) 1:1 als opakes Zen-Fenster. */
 .glass {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
+  background: var(--base);
   border-radius: var(--r-lg);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  box-shadow: var(--glass-shadow);
+  box-shadow: var(--shadow-card);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

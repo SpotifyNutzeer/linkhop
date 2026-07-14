@@ -53,15 +53,24 @@
 </section>
 
 <style>
+  /* Freie Card wie ResultCard (base, radius 16, Schatten) — kein
+     transluzenter Rot-Tint als Hintergrund. Kritikalität kommt allein
+     über den linken Akzent-Strip und die rote Überschrift. */
   .panel {
-    padding: 1.1rem 1.25rem;
-    background: var(--error-soft);
-    border: 1px solid color-mix(in srgb, var(--error) 55%, transparent);
+    position: relative;
+    padding: 1.1rem 1.25rem 1.1rem 1.5rem;
+    background: var(--base);
     border-radius: var(--r-lg);
-    backdrop-filter: blur(24px) saturate(170%);
-    -webkit-backdrop-filter: blur(24px) saturate(170%);
-    box-shadow: var(--glass-shadow);
-    animation: card-in var(--dur-slow) var(--ease-out);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    animation: card-in var(--dur) var(--ease-spring);
+  }
+  .panel::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: var(--error);
   }
   @keyframes card-in {
     from { opacity: 0; transform: translateY(6px); }
@@ -79,18 +88,18 @@
     height: 0.55rem;
     border-radius: 50%;
     background: var(--error);
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--error) 60%, transparent);
     animation: pulse 1.6s ease-in-out infinite;
   }
   @keyframes pulse {
-    0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--error) 45%, transparent); }
-    70%  { box-shadow: 0 0 0 8px transparent; }
-    100% { box-shadow: 0 0 0 0 transparent; }
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.4; }
   }
   h3 {
     margin: 0;
     font-family: var(--font-display);
-    font-size: 1.2rem;
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: -0.02em;
     color: var(--error);
   }
   .detail {
@@ -100,19 +109,18 @@
     font-size: 0.82rem;
   }
   .debug {
-    background: var(--glass-bg-strong);
-    border: 1px solid var(--glass-border);
+    background: var(--surface0);
+    border: 0;
     color: var(--text);
-    border-radius: var(--r-pill);
+    border-radius: var(--r-md);
     padding: 0.35rem 0.85rem;
     font: inherit;
     font-size: 0.82rem;
     cursor: pointer;
-    transition: all var(--dur-fast) var(--ease-out);
+    transition: background var(--dur-fast) var(--ease-out);
   }
   .debug:hover {
-    border-color: color-mix(in srgb, var(--error) 60%, transparent);
-    color: var(--error);
+    background: var(--surface1);
   }
 
   @media (prefers-reduced-motion: reduce) {

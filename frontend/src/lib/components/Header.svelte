@@ -13,46 +13,43 @@
 </header>
 
 <style>
+  /* Volle Breite, opakes Mantle, borderlos, kein Scroll-Blur — wie
+     Bar.qml (zen) / paul.wtf's Nav.astro. Ersetzt die schwebende
+     Pill-Shell. */
   .hdr {
     position: sticky;
-    top: 1rem;
+    top: 0;
     z-index: 10;
-    padding: 0 clamp(1rem, 4vw, 2rem);
-    margin: 1rem auto 0;
-    max-width: 780px;
+    background: var(--mantle);
   }
   .shell {
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 1rem;
-    padding: 0.55rem 0.65rem 0.55rem 1rem;
-    border-radius: var(--r-pill);
-    background: var(--glass-bg-strong);
-    border: 1px solid var(--glass-border);
-    backdrop-filter: blur(22px) saturate(180%);
-    -webkit-backdrop-filter: blur(22px) saturate(180%);
-    box-shadow: var(--glass-shadow);
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0.7rem clamp(1rem, 4vw, 2rem);
   }
   .brand {
     display: inline-flex;
     align-items: baseline;
-    gap: 0.55rem;
+    gap: 0.5rem;
     color: var(--text);
     font-family: var(--font-display);
-    font-size: 1.45rem;
+    font-weight: 700;
+    font-size: 1.15rem;
     line-height: 1;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
   }
   .mark {
     display: inline-block;
-    font-size: 1.15rem;
+    font-size: 1.05rem;
     color: var(--accent);
     transform: translateY(1px);
-    filter: drop-shadow(0 0 8px var(--accent-soft));
   }
   .word em {
-    font-style: italic;
+    font-style: normal;
     color: var(--accent);
   }
 </style>

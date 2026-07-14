@@ -37,6 +37,9 @@
 </button>
 
 <style>
+  /* Sekundär-Button-Rezept als Icon-Kreis: surface0, kein Border, Hover
+     surface1. Farbe/Opacity 200ms, die Icon-Drehung bleibt als Jelly-
+     Mikrointeraktion (Position/Größe, 350ms Überschwingen). */
   .theme-toggle {
     display: inline-flex;
     align-items: center;
@@ -44,20 +47,19 @@
     width: 2.4rem;
     height: 2.4rem;
     padding: 0;
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
+    background: var(--surface0);
+    border: 0;
     border-radius: 50%;
     color: var(--text);
     cursor: pointer;
-    backdrop-filter: blur(14px) saturate(170%);
-    -webkit-backdrop-filter: blur(14px) saturate(170%);
-    transition: all var(--dur-fast) var(--ease-out);
+    transition: background var(--dur-fast) var(--ease-out),
+                color var(--dur-fast) var(--ease-out);
   }
   .theme-toggle:hover {
+    background: var(--surface1);
     color: var(--accent);
-    border-color: color-mix(in srgb, var(--accent) 55%, transparent);
-    transform: rotate(-8deg);
   }
+  .theme-toggle:hover .icon { transform: rotate(-8deg); }
   .theme-toggle:active { transform: scale(0.95); }
   .icon {
     display: inline-flex;
@@ -65,6 +67,6 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .theme-toggle:hover { transform: none; }
+    .theme-toggle:hover .icon { transform: none; }
   }
 </style>

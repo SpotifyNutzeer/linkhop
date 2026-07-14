@@ -101,6 +101,7 @@
 {/if}
 
 <style>
+  /* Modal/Dropdown-Rezept: base, radius 16, Schatten, kein Border. */
   .dropdown {
     position: absolute;
     top: calc(100% + 0.5rem);
@@ -108,27 +109,25 @@
     right: 0;
     z-index: 20;
     padding: 0.4rem;
-    background: var(--glass-bg-strong);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--r-md);
-    backdrop-filter: blur(32px) saturate(180%);
-    -webkit-backdrop-filter: blur(32px) saturate(180%);
-    box-shadow: var(--glass-shadow);
+    background: var(--base);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-card);
     max-height: 18rem;
     overflow-y: auto;
-    animation: drop-in var(--dur) var(--ease-spring);
+    animation: drop-in var(--dur-fast) var(--ease-out);
   }
   @keyframes drop-in {
-    from { opacity: 0; transform: translateY(-4px) scale(0.98); }
-    to   { opacity: 1; transform: translateY(0) scale(1); }
+    from { opacity: 0; }
+    to   { opacity: 1; }
   }
   .hint {
     font-size: 0.7rem;
     color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
+    text-transform: lowercase;
     padding: 0.35rem 0.6rem 0.25rem;
   }
+  /* Zeilen-Rezept wie Tabellen: transparent in Ruhe, surface0 bei Hover/
+     Auswahl — kein Border, keine Farbwäsche. */
   .item {
     display: flex;
     gap: 0.5rem;
@@ -136,19 +135,17 @@
     align-items: baseline;
     text-align: left;
     padding: 0.55rem 0.65rem;
-    border: 1px solid transparent;
+    border: 0;
     border-radius: var(--r-sm);
     background: transparent;
     color: var(--text);
     cursor: pointer;
     font: inherit;
-    transition: background var(--dur-fast) var(--ease-out),
-                border-color var(--dur-fast) var(--ease-out);
+    transition: background var(--dur-fast) var(--ease-out);
   }
   .item:hover,
   .item[aria-selected='true'] {
-    background: var(--accent-soft);
-    border-color: var(--glass-border);
+    background: var(--surface0);
   }
   .item:focus-visible {
     outline: 2px solid var(--accent);
@@ -178,7 +175,6 @@
   .footer {
     margin-top: 0.25rem;
     padding-top: 0.35rem;
-    border-top: 1px solid var(--glass-border);
     text-align: right;
   }
   .clear {

@@ -14,16 +14,15 @@
 </div>
 
 <style>
+  /* Gleiches Fenster-Primitiv wie ResultCard, damit der Skeleton nicht
+     "poppt", wenn er durch das echte Ergebnis ersetzt wird. */
   .card {
     display: flex;
     gap: 1.25rem;
     padding: 1.25rem;
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
+    background: var(--base);
     border-radius: var(--r-xl);
-    backdrop-filter: blur(32px) saturate(180%);
-    -webkit-backdrop-filter: blur(32px) saturate(180%);
-    box-shadow: var(--glass-shadow);
+    box-shadow: var(--shadow-card);
   }
   .cover {
     width: 138px;
@@ -46,15 +45,17 @@
   .w-60 { width: 60%; }
   .w-90 { width: 90%; }
 
+  /* Shimmer wandert von surface0 zu surface1 — kein Blur, keine
+     Akzentfarbe im Chrome. */
   .shimmer {
     background:
       linear-gradient(
         100deg,
-        var(--glass-bg-strong) 0%,
-        var(--glass-bg-strong) 40%,
-        var(--accent-soft) 50%,
-        var(--glass-bg-strong) 60%,
-        var(--glass-bg-strong) 100%
+        var(--surface0) 0%,
+        var(--surface0) 40%,
+        var(--surface1) 50%,
+        var(--surface0) 60%,
+        var(--surface0) 100%
       );
     background-size: 200% 100%;
     animation: shimmer 1.6s ease-in-out infinite;

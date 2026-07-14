@@ -48,29 +48,25 @@
 </div>
 
 <style>
+  /* Input/Select-Rezept: surface0, kein Border, radius 10, Fokus = Teal-
+     Ring statt Border-Farbwechsel + Lift. */
   .bar {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     padding: 0.4rem 0.4rem 0.4rem 1rem;
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--r-pill);
-    backdrop-filter: blur(28px) saturate(180%);
-    -webkit-backdrop-filter: blur(28px) saturate(180%);
-    box-shadow: var(--glass-shadow);
-    transition: border-color var(--dur) var(--ease-out),
-                transform var(--dur) var(--ease-spring);
+    background: var(--surface0);
+    border-radius: var(--r-md);
+    transition: box-shadow var(--dur-fast) var(--ease-out);
   }
   .bar:focus-within {
-    border-color: var(--accent);
-    transform: translateY(-1px);
+    box-shadow: 0 0 0 2px var(--accent);
   }
   .bar.is-disabled { opacity: 0.75; }
   .lead {
     color: var(--text-dim);
     display: inline-flex;
-    transition: color var(--dur) var(--ease-out);
+    transition: color var(--dur-fast) var(--ease-out);
   }
   .bar:focus-within .lead { color: var(--accent); }
   input {
@@ -88,24 +84,19 @@
   .go {
     flex-shrink: 0;
     padding: 0.65rem 1.1rem;
-    border: 1px solid transparent;
-    border-radius: var(--r-pill);
+    border: 0;
+    border-radius: var(--r-md);
     background: var(--accent);
     color: var(--accent-contrast);
     font: inherit;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 0.92rem;
     letter-spacing: 0.01em;
     cursor: pointer;
-    box-shadow:
-      0 1px 0 0 rgba(255, 255, 255, 0.35) inset,
-      0 -1px 0 0 rgba(0, 0, 0, 0.18) inset,
-      0 6px 18px -8px rgba(0, 0, 0, 0.4);
-    transition: transform var(--dur-fast) var(--ease-spring),
-                filter var(--dur-fast) var(--ease-out);
+    transition: filter var(--dur-fast) var(--ease-out);
   }
-  .go:not(:disabled):hover { filter: brightness(1.06); transform: translateY(-1px); }
-  .go:not(:disabled):active { transform: translateY(0); filter: brightness(0.95); }
+  .go:not(:disabled):hover { filter: brightness(1.12); }
+  .go:not(:disabled):active { filter: brightness(0.95); }
   .go:disabled { opacity: 0.55; cursor: not-allowed; }
 
   @media (max-width: 520px) {
