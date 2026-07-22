@@ -103,6 +103,7 @@
   .row[data-service-id='deezer']  { --brand: #a238ff; }
   .row[data-service-id='tidal']   { --brand: #25d1da; }
   .row[data-service-id='youtube_music'] { --brand: #ff0000; }
+  .row[data-service-id='apple_music'] { --brand: #fa243c; }
   .name {
     display: flex;
     gap: 0.4rem;

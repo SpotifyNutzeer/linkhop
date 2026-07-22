@@ -36,7 +36,7 @@
   </span>
   <input
     type="url"
-    placeholder="Spotify-, Deezer-, Tidal- oder YouTube-Music-Link einfügen …"
+    placeholder="Spotify-, Deezer-, Tidal-, YouTube-Music- oder Apple-Music-Link einfügen …"
     bind:value
     onkeydown={onKeyDown}
     onfocus={() => onfocus?.()}
