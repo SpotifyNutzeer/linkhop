@@ -11,8 +11,9 @@ war im V1-Design ([2026-04-18-linkhop-design.md](2026-04-18-linkhop-design.md))
 explizit Nicht-Ziel, weil die offizielle Apple Music API einen
 kostenpflichtigen Developer-Account erfordert. Dieses Spec liefert Apple
 Music trotzdem nach — über die **kostenlose, credential-freie iTunes
-Search/Lookup API**, die ISRC- und UPC-Lookups unterstützt und damit dem
-Deezer-Muster entspricht. Der Vorbehalt aus V1 ist damit umgangen, nicht
+Search/Lookup API**, die UPC-Lookups unterstützt und damit dem
+Deezer-Muster nahekommt (der ISRC-Lookup stellte sich als defekt heraus,
+siehe Revision unter „Matching und Datenfluss"). Der Vorbehalt aus V1 ist damit umgangen, nicht
 gebrochen.
 
 ## Ziele und Nicht-Ziele
@@ -23,8 +24,9 @@ gebrochen.
   für Tracks, Alben und Artists
 - **Keine Credentials**: iTunes Search API ohne Auth — kein Secret,
   Helm-Chart bleibt einfach
-- **ISRC/UPC-Matching Richtung Apple Music** (`confidence = 1.0`), soweit
-  die API es hergibt
+- **UPC-Matching für Alben Richtung Apple Music** (`confidence = 1.0`);
+  Tracks über Metadaten-Suche (siehe Revision unter „Matching und
+  Datenfluss" — der iTunes-ISRC-Lookup ist real defekt)
 - **Kein Eingriff** in `matching.py` oder `pipeline.py`
 
 ### Nicht-Ziele
@@ -43,7 +45,7 @@ gebrochen.
 
 | Ansatz | Bewertung |
 |---|---|
-| **iTunes Search/Lookup API (gewählt)** | Kostenlos, ohne Credentials, ISRC/UPC-Lookup als Eingabe, stabil seit Jahren. Nachteile: ~20 req/min, Antworten enthalten kein ISRC/UPC, Metadaten dünner. |
+| **iTunes Search/Lookup API (gewählt)** | Kostenlos, ohne Credentials, ISRC/UPC-Lookup als Eingabe (ISRC stellte sich live als defekt heraus), stabil seit Jahren. Nachteile: ~20 req/min, Antworten enthalten kein ISRC/UPC, Metadaten dünner. |
 | Apple Music API (MusicKit) | Bessere Daten (inkl. ISRC in Antworten), höhere Limits — aber 99 €/Jahr Developer-Programm, ES256-Key als Deployment-Secret, JWT-Generierung. Für ein Hobby-Deployment unverhältnismäßig. |
 | iTunes jetzt, MusicKit-Abstraktion vorbereiten | YAGNI — die Adapter-Schnittstelle selbst ist bereits die Austauschgrenze. |
 
@@ -83,11 +85,13 @@ gebrochen.
 
 | Fall | Aufruf | Ergebnis |
 |---|---|---|
-| Track mit ISRC | `GET /lookup?isrc=<isrc>` | erster Song-Treffer, `confidence=1.0, match="isrc"` |
 | Album mit UPC | `GET /lookup?upc=<upc>` | erster Collection-Treffer, `confidence=1.0, match="upc"` |
-| Fallback Track | `GET /search?term=<titel artist>&media=music&entity=song&limit=3` | bis 3 × `confidence=0.0, match="metadata"` |
+| Track | `GET /search?term=<titel artist>&media=music&entity=song&limit=3` | bis 3 × `confidence=0.0, match="metadata"` |
 | Fallback Album | `…&entity=album&limit=3` | dito |
-| Fallback Artist | `…&entity=musicArtist&limit=3` | dito |
+| Artist | `…&entity=musicArtist&limit=3` | dito |
+
+(Kein ISRC-Pfad — ursprünglich geplant, nach Live-Verifikation entfernt;
+siehe Revision unter „Matching und Datenfluss".)
 
 - Query-Term: Titel + erster Artist, unbehandelt (die iTunes-Suche hat
   keine Feld-Syntax wie Deezer, daher kein Quote-Stripping nötig)
@@ -158,7 +162,8 @@ wird im README dokumentiert, nicht kaschiert.
   (`LINKHOP_ENABLE_APPLE_MUSIC`, `LINKHOP_APPLE_MUSIC_STOREFRONT`) im
   `backend-deployment.yaml` — keine Secret-Keys
 - Keine neue Python-Dependency (nur `httpx`)
-- READMEs: Haupt-README-Tabelle (+ Hinweis auf ISRC-Asymmetrie),
+- READMEs: Haupt-README-Tabelle (+ Hinweis auf Matching-Verhalten:
+  UPC für Alben, Metadaten für Tracks und für Apple als Quelle),
   `backend/README.md` Env-Var-Referenz
 
 ## Tests
@@ -169,7 +174,8 @@ Nach bestehendem Muster:
   JSON-Fixtures (`tests/fixtures/apple_music_*.json`). Abgedeckt:
   - `resolve` für alle drei Typen (inkl. Artwork-Upscaling,
     `country`-Parameter, Typ-Mismatch → `None`, `resultCount 0` → `None`)
-  - `search`: ISRC-Pfad, UPC-Pfad, Metadaten-Fallback pro Typ,
+  - `search`: UPC-Pfad (inkl. Miss ohne Fallthrough), Metadaten-Fallback
+    pro Typ (ISRC-Quellen gehen direkt in die Metadaten-Suche),
     Limit/Slicing, SearchHit-Felder
   - Fehler: HTTP 429/500 → `AdapterError`, Nicht-JSON-Body → `AdapterError`
 - `test_url_parser.py`: Positivfälle für alle vier Muster (mit/ohne
