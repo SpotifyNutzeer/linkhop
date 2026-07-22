@@ -1,0 +1,18 @@
+{
+  "resultCount": 1,
+  "results": [
+    {
+      "wrapperType": "track",
+      "kind": "song",
+      "artistId": 358714030,
+      "collectionId": 719245563,
+      "trackId": 719245988,
+      "artistName": "Kavinsky",
+      "collectionName": "OutRun",
+      "trackName": "Nightcall",
+      "trackViewUrl": "https://music.apple.com/de/album/nightcall/719245563?i=719245988",
+      "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music/v4/outrun/100x100bb.jpg",
+      "trackTimeMillis": 258373
+    }
+  ]
+}

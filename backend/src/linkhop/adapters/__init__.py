@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from linkhop.adapters.apple_music import AppleMusicAdapter
 from linkhop.adapters.base import AdapterCapabilities, ServiceAdapter
 from linkhop.adapters.deezer import DeezerAdapter
 from linkhop.adapters.spotify import SpotifyAdapter
@@ -8,6 +9,7 @@ from linkhop.adapters.youtube_music import YouTubeMusicAdapter
 
 __all__ = [
     "AdapterCapabilities",
+    "AppleMusicAdapter",
     "DeezerAdapter",
     "ServiceAdapter",
     "SpotifyAdapter",
