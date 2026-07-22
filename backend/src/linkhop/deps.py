@@ -4,6 +4,7 @@ import httpx
 from ytmusicapi import YTMusic
 
 from linkhop.adapters import (
+    AppleMusicAdapter,
     DeezerAdapter,
     ServiceAdapter,
     SpotifyAdapter,
@@ -36,4 +37,9 @@ def build_adapter_map(settings: Settings, http: httpx.AsyncClient) -> dict[str, 
         # Auth-frei, kein Credential-Check. YTMusic() initialisiert nur lokale
         # Header/Session, macht beim Konstruieren keinen Netzwerk-Call.
         adapters["youtube_music"] = YouTubeMusicAdapter(client=YTMusic())
+    if settings.enable_apple_music:
+        # Auth-frei (iTunes Search API), kein Credential-Check.
+        adapters["apple_music"] = AppleMusicAdapter(
+            client=http, storefront=settings.apple_music_storefront
+        )
     return adapters

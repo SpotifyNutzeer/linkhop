@@ -1,6 +1,12 @@
 import httpx
 
-from linkhop.adapters import DeezerAdapter, SpotifyAdapter, TidalAdapter, YouTubeMusicAdapter
+from linkhop.adapters import (
+    AppleMusicAdapter,
+    DeezerAdapter,
+    SpotifyAdapter,
+    TidalAdapter,
+    YouTubeMusicAdapter,
+)
 from linkhop.config import Settings
 from linkhop.deps import build_adapter_map
 
@@ -42,6 +48,7 @@ async def test_all_flags_off_returns_empty(monkeypatch):
     monkeypatch.setenv("LINKHOP_ENABLE_DEEZER", "false")
     monkeypatch.setenv("LINKHOP_ENABLE_TIDAL", "false")
     monkeypatch.setenv("LINKHOP_ENABLE_YOUTUBE_MUSIC", "false")
+    monkeypatch.setenv("LINKHOP_ENABLE_APPLE_MUSIC", "false")
     s = Settings()
     async with httpx.AsyncClient() as c:
         m = build_adapter_map(s, c)
@@ -80,3 +87,31 @@ async def test_youtube_music_disabled(monkeypatch):
     async with httpx.AsyncClient() as c:
         m = build_adapter_map(s, c)
         assert "youtube_music" not in m
+
+
+async def test_apple_music_registered_by_default():
+    # Auth-frei: kein Credential-Check, Default-Settings reichen.
+    s = Settings()
+    async with httpx.AsyncClient() as c:
+        m = build_adapter_map(s, c)
+        assert isinstance(m["apple_music"], AppleMusicAdapter)
+
+
+async def test_apple_music_disabled(monkeypatch):
+    monkeypatch.setenv("LINKHOP_ENABLE_APPLE_MUSIC", "false")
+    s = Settings()
+    async with httpx.AsyncClient() as c:
+        m = build_adapter_map(s, c)
+        assert "apple_music" not in m
+
+
+async def test_apple_music_gets_configured_storefront(monkeypatch):
+    # Privates Attribut statt Verhaltens-Test: das Storefront-Verhalten selbst
+    # ist in test_apple_music.py abgedeckt; hier geht es nur ums Durchreichen.
+    monkeypatch.setenv("LINKHOP_APPLE_MUSIC_STOREFRONT", "us")
+    s = Settings()
+    async with httpx.AsyncClient() as c:
+        m = build_adapter_map(s, c)
+        adapter = m["apple_music"]
+        assert isinstance(adapter, AppleMusicAdapter)
+        assert adapter._storefront == "us"

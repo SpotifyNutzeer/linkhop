@@ -35,9 +35,16 @@ def test_service_enable_flags_default_true():
     assert settings.enable_deezer is True
     assert settings.enable_tidal is True
     assert settings.enable_youtube_music is True
+    assert settings.enable_apple_music is True
 
 
 def test_cors_allow_origins_parses_comma_separated(monkeypatch):
     monkeypatch.setenv("LINKHOP_CORS_ALLOW_ORIGINS", "https://a.example,https://b.example")
     settings = Settings()
     assert settings.cors_allow_origins == ["https://a.example", "https://b.example"]
+
+
+def test_apple_music_storefront_default_and_override(monkeypatch):
+    assert Settings().apple_music_storefront == "de"
+    monkeypatch.setenv("LINKHOP_APPLE_MUSIC_STOREFRONT", "us")
+    assert Settings().apple_music_storefront == "us"

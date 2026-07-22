@@ -50,3 +50,22 @@ def test_services_excludes_disabled_youtube_music(monkeypatch):
         resp = client.get("/api/v1/services")
     ids = {s["id"] for s in resp.json()["services"]}
     assert "youtube_music" not in ids
+
+
+def test_services_includes_apple_music():
+    app = create_app(Settings())
+    with TestClient(app) as client:
+        resp = client.get("/api/v1/services")
+    body = resp.json()
+    am = next(s for s in body["services"] if s["id"] == "apple_music")
+    assert am["name"] == "Apple Music"
+    assert set(am["capabilities"]) == {"track", "album", "artist"}
+
+
+def test_services_excludes_disabled_apple_music(monkeypatch):
+    monkeypatch.setenv("LINKHOP_ENABLE_APPLE_MUSIC", "false")
+    app = create_app(Settings())
+    with TestClient(app) as client:
+        resp = client.get("/api/v1/services")
+    ids = {s["id"] for s in resp.json()["services"]}
+    assert "apple_music" not in ids

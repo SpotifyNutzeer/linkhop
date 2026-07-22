@@ -45,12 +45,16 @@ class Settings(BaseSettings):
     enable_deezer: bool = True
     enable_tidal: bool = True
     enable_youtube_music: bool = True
+    enable_apple_music: bool = True
 
     spotify_client_id: str = ""
     spotify_client_secret: str = ""
 
     tidal_client_id: str = ""
     tidal_client_secret: str = ""
+
+    # Apple-Music-Storefront (Länderkatalog) für iTunes-Lookups und erzeugte Links.
+    apple_music_storefront: str = "de"
 
     cors_allow_origins: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["*"]
