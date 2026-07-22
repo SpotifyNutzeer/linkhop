@@ -49,6 +49,10 @@ spec:
               value: {{ .Values.config.enableTidal | quote }}
             - name: LINKHOP_ENABLE_YOUTUBE_MUSIC
               value: {{ .Values.config.enableYoutubeMusic | quote }}
+            - name: LINKHOP_ENABLE_APPLE_MUSIC
+              value: {{ .Values.config.enableAppleMusic | quote }}
+            - name: LINKHOP_APPLE_MUSIC_STOREFRONT
+              value: {{ .Values.config.appleMusicStorefront | quote }}
             - name: LINKHOP_FORWARDED_ALLOW_IPS
               value: {{ .Values.backend.forwardedAllowIps | quote }}
           livenessProbe:

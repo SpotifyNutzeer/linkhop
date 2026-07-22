@@ -54,6 +54,10 @@ config:
   enableTidal: true
   # -- YouTube Music braucht keine Credentials (unauthentifizierte ytmusicapi).
   enableYoutubeMusic: true
+  # -- Apple Music braucht keine Credentials (iTunes Search API).
+  enableAppleMusic: true
+  # -- Apple-Music-Storefront (Länderkatalog) für Lookups und erzeugte Links
+  appleMusicStorefront: "de"
 
 # -- Sensitive credentials
 secrets:
