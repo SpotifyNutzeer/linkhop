@@ -37,10 +37,10 @@ from linkhop.url_parser import ParsedUrl, UnsupportedUrlError, parse
     ("https://music.apple.com/de/album/outrun/719245563?i=719245988", "apple_music", "track", "719245988"),  # noqa: E501
     ("https://music.apple.com/de/album/outrun/719245563", "apple_music", "album", "719245563"),
     ("https://music.apple.com/de/album/719245563/", "apple_music", "album", "719245563"),
-    ("https://music.apple.com/de/artist/kavinsky/358714030", "apple_music", "artist", "358714030"),  # noqa: E501
-    ("https://geo.music.apple.com/de/album/outrun/719245563", "apple_music", "album", "719245563"),  # noqa: E501
+    ("https://music.apple.com/de/artist/kavinsky/358714030", "apple_music", "artist", "358714030"),
+    ("https://geo.music.apple.com/de/album/outrun/719245563", "apple_music", "album", "719245563"),
     # Legacy-iTunes-Links präfixen die ID mit "id".
-    ("https://itunes.apple.com/de/album/outrun/id719245563", "apple_music", "album", "719245563"),  # noqa: E501
+    ("https://itunes.apple.com/de/album/outrun/id719245563", "apple_music", "album", "719245563"),
     ("https://itunes.apple.com/de/artist/kavinsky/id358714030", "apple_music", "artist", "358714030"),  # noqa: E501
 ])
 def test_parse_valid(url, service, type_, id_):
