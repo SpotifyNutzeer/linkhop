@@ -31,6 +31,11 @@ _YTM_ALBUM_PLAYLIST = re.compile(r"^OLAK5uy_[A-Za-z0-9_-]+$")
 _YTM_CHANNEL_PATH = re.compile(r"^/channel/(UC[A-Za-z0-9_-]+)/?$")
 _YTM_BROWSE_PATH = re.compile(r"^/browse/(MPREb_[A-Za-z0-9_-]+)/?$")
 
+# Apple Music: /<storefront>/<typ>/<slug>/<id>. Storefront (2-Buchstaben-Code)
+# und Slug sind optional; Legacy-iTunes-Links präfixen die ID mit "id".
+# Ein ?i=<trackId> auf Album-URLs verweist auf einen einzelnen Track.
+_APPLE_PATH = re.compile(r"^(?:/[a-z]{2})?/(song|album|artist)/(?:[^/]+/)?(?:id)?(\d+)/?$")
+
 
 def parse(url: str) -> ParsedUrl:
     if not url:
@@ -89,5 +94,18 @@ def parse(url: str) -> ParsedUrl:
             m = _YTM_BROWSE_PATH.match(path)
             if m:
                 return ParsedUrl("youtube_music", "album", m.group(1))
+
+    elif host in {"music.apple.com", "geo.music.apple.com", "itunes.apple.com"}:
+        m = _APPLE_PATH.match(path)
+        if m:
+            type_, id_ = m.group(1), m.group(2)
+            if type_ == "song":
+                return ParsedUrl("apple_music", "track", id_)
+            if type_ == "album":
+                track_id = parse_qs(parsed.query).get("i", [""])[0]
+                if track_id.isdigit():
+                    return ParsedUrl("apple_music", "track", track_id)
+                return ParsedUrl("apple_music", "album", id_)
+            return ParsedUrl("apple_music", "artist", id_)
 
     raise UnsupportedUrlError(f"no matching service for host: {host}")

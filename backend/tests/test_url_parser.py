@@ -29,6 +29,19 @@ from linkhop.url_parser import ParsedUrl, UnsupportedUrlError, parse
     ("https://music.youtube.com/channel/UC0FvDIzS3wnvBJN1DyGZv6g", "youtube_music", "artist", "UC0FvDIzS3wnvBJN1DyGZv6g"),  # noqa: E501
     ("https://music.youtube.com/watch/?v=dQw4w9WgXcQ", "youtube_music", "track", "dQw4w9WgXcQ"),
     ("https://music.youtube.com/playlist/?list=OLAK5uy_kkmbD9ZRiBSpYRrrFiEW8u17rPWLKecJk", "youtube_music", "album", "OLAK5uy_kkmbD9ZRiBSpYRrrFiEW8u17rPWLKecJk"),  # noqa: E501
+    # Apple Music: /<storefront>/<typ>/<slug>/<id>; Storefront und Slug optional.
+    ("https://music.apple.com/de/song/nightcall/719245988", "apple_music", "track", "719245988"),
+    ("https://music.apple.com/us/song/719245988", "apple_music", "track", "719245988"),
+    ("https://music.apple.com/song/nightcall/719245988", "apple_music", "track", "719245988"),
+    # ?i=<trackId> auf Album-URLs meint einen einzelnen Track und gewinnt.
+    ("https://music.apple.com/de/album/outrun/719245563?i=719245988", "apple_music", "track", "719245988"),  # noqa: E501
+    ("https://music.apple.com/de/album/outrun/719245563", "apple_music", "album", "719245563"),
+    ("https://music.apple.com/de/album/719245563/", "apple_music", "album", "719245563"),
+    ("https://music.apple.com/de/artist/kavinsky/358714030", "apple_music", "artist", "358714030"),  # noqa: E501
+    ("https://geo.music.apple.com/de/album/outrun/719245563", "apple_music", "album", "719245563"),  # noqa: E501
+    # Legacy-iTunes-Links präfixen die ID mit "id".
+    ("https://itunes.apple.com/de/album/outrun/id719245563", "apple_music", "album", "719245563"),  # noqa: E501
+    ("https://itunes.apple.com/de/artist/kavinsky/id358714030", "apple_music", "artist", "358714030"),  # noqa: E501
 ])
 def test_parse_valid(url, service, type_, id_):
     result = parse(url)
@@ -53,6 +66,10 @@ def test_parse_valid(url, service, type_, id_):
     "https://youtu.be/dQw4w9WgXcQ",
     "https://music.youtube.com/browse/PLsome_normal_playlist",   # kein MPREb_-Präfix
     "https://music.youtube.com/channel/XCsomethingNotUC",        # kein UC-Präfix
+    "https://music.apple.com/de/playlist/pl.u-abc123",       # Playlists nicht unterstützt
+    "https://music.apple.com/de/song/nightcall/notanumber",  # ID muss numerisch sein
+    "https://music.apple.com/de/music-video/foo/123",        # Musikvideos nicht unterstützt
+    "https://music.apple.com/de/album/outrun",               # Slug ohne ID
 ])
 def test_parse_invalid_raises(url):
     with pytest.raises(UnsupportedUrlError):
