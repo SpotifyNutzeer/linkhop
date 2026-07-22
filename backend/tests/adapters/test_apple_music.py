@@ -108,29 +108,15 @@ def _source(**overrides) -> ResolvedContent:
 
 
 @respx.mock
-async def test_search_by_isrc(adapter: AppleMusicAdapter):
-    route = respx.get(LOOKUP, params={"isrc": "FR6V81200001"}).respond(
-        json=fix("apple_music_track.json")
-    )
+async def test_search_track_with_isrc_uses_metadata_search(adapter: AppleMusicAdapter):
+    # Ein Track mit ISRC muss trotzdem direkt in die Metadaten-Suche gehen —
+    # der /lookup-Endpunkt mit isrc darf dafür gar nicht erst angefragt werden.
+    lookup_route = respx.get(LOOKUP).respond(json=EMPTY)
+    respx.get(SEARCH).respond(json=fix("apple_music_search_song.json"))
     hits = await adapter.search(_source(isrc="FR6V81200001"), ContentType.TRACK)
-    assert len(hits) == 1
-    assert hits[0].match == "isrc"
-    assert hits[0].confidence == 1.0
-    assert hits[0].id == "719245988"
-    assert hits[0].url == "https://music.apple.com/de/album/nightcall/719245563?i=719245988"
-    assert route.calls.last.request.url.params["country"] == "de"
-
-
-@respx.mock
-async def test_search_isrc_miss_does_not_fall_through_to_metadata(adapter: AppleMusicAdapter):
-    # Ein ISRC-Miss muss [] liefern, ohne einen zweiten /search-Request —
-    # sonst bekommt die Matching-Engine unerwartete metadata-Hits.
-    isrc_route = respx.get(LOOKUP, params={"isrc": "NOPE"}).respond(json=EMPTY)
-    metadata_route = respx.get(SEARCH).respond(json=fix("apple_music_search_song.json"))
-    hits = await adapter.search(_source(isrc="NOPE"), ContentType.TRACK)
-    assert hits == []
-    assert isrc_route.call_count == 1
-    assert metadata_route.call_count == 0
+    assert len(hits) == 3
+    assert all(h.match == "metadata" for h in hits)
+    assert lookup_route.call_count == 0
 
 
 @respx.mock
@@ -144,6 +130,19 @@ async def test_search_by_upc(adapter: AppleMusicAdapter):
     assert hits[0].match == "upc"
     assert hits[0].confidence == 1.0
     assert hits[0].id == "719245563"
+
+
+@respx.mock
+async def test_search_upc_miss_does_not_fall_through_to_metadata(adapter: AppleMusicAdapter):
+    # Ein UPC-Miss muss [] liefern, ohne einen zweiten /search-Request —
+    # sonst bekommt die Matching-Engine unerwartete metadata-Hits.
+    upc_route = respx.get(LOOKUP, params={"upc": "NOPE"}).respond(json=EMPTY)
+    metadata_route = respx.get(SEARCH).respond(json=fix("apple_music_search_song.json"))
+    source = _source(type=ContentType.ALBUM, album=None, duration_ms=None, upc="NOPE")
+    hits = await adapter.search(source, ContentType.ALBUM)
+    assert hits == []
+    assert upc_route.call_count == 1
+    assert metadata_route.call_count == 0
 
 
 @respx.mock

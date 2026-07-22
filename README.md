@@ -21,9 +21,10 @@ identifiers (ISRC for tracks, UPC for albums) over fuzzy metadata search.
 
 Playlists are out of scope for V1.
 
-Note: the iTunes API accepts ISRC/UPC as lookup *input* but does not return
-them in responses — conversions *towards* Apple Music match via ISRC/UPC,
-conversions *from* Apple Music fall back to metadata matching.
+Note: conversions *towards* Apple Music match albums via UPC, but tracks
+always use metadata matching — the iTunes API's ISRC lookup returns no
+results in practice. Conversions *from* Apple Music always use metadata
+matching, since iTunes responses contain no ISRC/UPC.
 
 ## Features
 

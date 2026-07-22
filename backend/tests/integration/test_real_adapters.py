@@ -1,5 +1,4 @@
 import os
-from dataclasses import replace
 
 import httpx
 import pytest
@@ -132,18 +131,15 @@ async def test_youtube_music_to_deezer_metadata(clients):
 
 async def test_deezer_to_apple_music_via_metadata(clients):
     # Credential-freier Flow: Deezer liefert Metadaten, Apple-Search matcht.
-    # Hinweis: iTunes ISRC-Abdeckung ist begrenzt. Für Metadaten-Matching
-    # entfernen wir das ISRC, damit der Adapter zum Metadaten-Fallback greift.
+    # Der Adapter hat keinen ISRC-Pfad für Tracks (iTunes liefert dafür real
+    # immer 0 Treffer) — es geht direkt in die Metadaten-Suche.
     parsed = parse("https://www.deezer.com/track/3135556")
     source = await clients["deezer"].resolve(parsed)
     assert source is not None
     assert source.title, "Deezer resolve returned no title"
     assert source.artists, "Deezer resolve returned no artists"
 
-    # Für Metadaten-Matching: ISRC temporär entfernen, da iTunes-Abdeckung
-    # begrenzt ist. (In der Praxis handhabt die Pipeline das über score_candidate.)
-    source_no_isrc = replace(source, isrc=None)
-    hits = await clients["apple_music"].search(source_no_isrc, ContentType(parsed.type))
+    hits = await clients["apple_music"].search(source, ContentType(parsed.type))
     assert hits, "No Apple Music hits found for Deezer track"
     assert any(h.match == "metadata" for h in hits)
 
@@ -155,12 +151,8 @@ async def test_apple_music_resolve_from_search_hit(clients):
     deezer_source = await clients["deezer"].resolve(parsed)
     assert deezer_source is not None
 
-    # Hinweis: iTunes ISRC-Abdeckung ist begrenzt. Für Metadaten-Matching
-    # entfernen wir das ISRC, damit der Adapter zum Metadaten-Fallback greift.
-    deezer_source_no_isrc = replace(deezer_source, isrc=None)
-
     # Search Apple Music by Deezer metadata
-    apple_hits = await clients["apple_music"].search(deezer_source_no_isrc, ContentType.TRACK)
+    apple_hits = await clients["apple_music"].search(deezer_source, ContentType.TRACK)
     assert apple_hits, "No Apple Music hits for Deezer track metadata"
 
     # Resolve the first Apple Music hit liefert vollständige Metadaten
@@ -173,3 +165,15 @@ async def test_apple_music_resolve_from_search_hit(clients):
     assert apple_source.artists, "Apple Music track has no artists"
     # iTunes-Antworten enthalten keine ISRCs — das ist dokumentiertes Verhalten.
     assert apple_source.isrc is None, "iTunes should not return ISRC"
+
+
+async def test_deezer_to_apple_music_album_via_upc(clients):
+    # Daft Punk "Discovery" — stabiler Katalog-Eintrag. Live verifiziert:
+    # iTunes findet UPC 724384960650 (2026-07).
+    parsed = parse("https://www.deezer.com/album/302127")
+    source = await clients["deezer"].resolve(parsed)
+    assert source is not None
+    assert source.upc, "Deezer resolve returned no UPC — ID rotated?"
+
+    hits = await clients["apple_music"].search(source, ContentType.ALBUM)
+    assert any(h.match == "upc" for h in hits)

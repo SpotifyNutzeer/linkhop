@@ -89,15 +89,8 @@ class AppleMusicAdapter:
         return None
 
     async def search(self, meta: ResolvedContent, target_type: ContentType) -> list[SearchHit]:
-        if target_type == ContentType.TRACK and meta.isrc:
-            results = await self._get("/lookup", {"isrc": meta.isrc})
-            songs = [r for r in results if r.get("wrapperType") == "track"]
-            if songs:
-                id_, url = _id_and_url(songs[0], target_type)
-                return [SearchHit(
-                    service=self.service_id, id=id_, url=url, confidence=1.0, match="isrc",
-                )]
-            return []
+        # Kein ISRC-Pfad: der isrc-Parameter des iTunes-Lookups liefert real immer
+        # 0 Treffer (live verifiziert 2026-07). Tracks gehen direkt in die Metadaten-Suche.
         if target_type == ContentType.ALBUM and meta.upc:
             results = await self._get("/lookup", {"upc": meta.upc})
             albums = [r for r in results if r.get("wrapperType") == "collection"]
