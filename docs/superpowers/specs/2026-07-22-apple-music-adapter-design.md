@@ -113,16 +113,24 @@ Hosts: `music.apple.com`, `geo.music.apple.com`, `itunes.apple.com`
   `id`-Präfix vor der Zahl wird toleriert.
 - Alles andere unter diesen Hosts → `UnsupportedUrlError`.
 
-## Matching und Datenfluss — die ISRC-Asymmetrie
+## Matching und Datenfluss
 
-Die iTunes-API akzeptiert ISRC/UPC als *Eingabe*, liefert sie aber
-**nicht in Antworten** zurück. Konsequenz:
+> **Revision 2026-07-22 (nach Live-Verifikation):** Der ursprünglich
+> geplante ISRC-Lookup-Pfad wurde ersatzlos entfernt. Der `isrc`-Parameter
+> des iTunes-Lookups liefert real durchgängig `resultCount: 0` (mehrere
+> bekannte ISRCs, mit/ohne `entity=song`, mehrere Storefronts). Mit der
+> geplanten Miss-Semantik (leeres Ergebnis ohne Fallback) wäre jeder Track
+> mit ISRC auf Apple Music als „nicht gefunden" geendet. Entscheidung
+> (Paul, 2026-07-22): Tracks gehen immer direkt in die Metadaten-Suche.
+> Der UPC-Pfad funktioniert nachweislich und bleibt.
 
-- **Andere Dienste → Apple Music:** ISRC/UPC-Lookup, `confidence = 1.0` —
-  beste Qualitätsstufe.
-- **Apple Music als Quelle:** `ResolvedContent` ohne ISRC/UPC → Ziel-Dienste
-  matchen über den Metadaten-Pfad (`score_candidate`), nie `1.0`.
-  `trackTimeMillis` liefert die Dauer und stützt die Track-Genauigkeit.
+- **Andere Dienste → Apple Music, Alben:** UPC-Lookup, `confidence = 1.0`.
+- **Andere Dienste → Apple Music, Tracks:** Metadaten-Suche
+  (`score_candidate`-Scoring der Pipeline), nie `1.0`.
+- **Apple Music als Quelle:** iTunes-Antworten enthalten kein ISRC/UPC →
+  `ResolvedContent` ohne Industry-IDs → Ziel-Dienste matchen über den
+  Metadaten-Pfad. `trackTimeMillis` liefert die Dauer und stützt die
+  Track-Genauigkeit.
 
 Das ist die ehrliche Abbildung der Datenlage (wie bei YouTube Music) und
 wird im README dokumentiert, nicht kaschiert.
