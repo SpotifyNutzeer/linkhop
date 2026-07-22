@@ -1,0 +1,44 @@
+{
+  "resultCount": 3,
+  "results": [
+    {
+      "wrapperType": "track",
+      "kind": "song",
+      "trackId": 719245988,
+      "collectionId": 719245563,
+      "artistId": 358714030,
+      "artistName": "Kavinsky",
+      "collectionName": "OutRun",
+      "trackName": "Nightcall",
+      "trackViewUrl": "https://music.apple.com/de/album/nightcall/719245563?i=719245988",
+      "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music/v4/outrun/100x100bb.jpg",
+      "trackTimeMillis": 258373
+    },
+    {
+      "wrapperType": "track",
+      "kind": "song",
+      "trackId": 111111111,
+      "collectionId": 222222222,
+      "artistId": 358714030,
+      "artistName": "Kavinsky",
+      "collectionName": "Nightcall - EP",
+      "trackName": "Nightcall (Live)",
+      "trackViewUrl": "https://music.apple.com/de/album/nightcall-live/222222222?i=111111111",
+      "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music/v4/ep/100x100bb.jpg",
+      "trackTimeMillis": 261000
+    },
+    {
+      "wrapperType": "track",
+      "kind": "song",
+      "trackId": 333333333,
+      "collectionId": 444444444,
+      "artistId": 358714030,
+      "artistName": "Kavinsky",
+      "collectionName": "Nightcall (Remixes)",
+      "trackName": "Nightcall (Remix)",
+      "trackViewUrl": "https://music.apple.com/de/album/nightcall-remix/444444444?i=333333333",
+      "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music/v4/rmx/100x100bb.jpg",
+      "trackTimeMillis": 240000
+    }
+  ]
+}

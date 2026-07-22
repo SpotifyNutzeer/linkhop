@@ -1,0 +1,15 @@
+{
+  "resultCount": 1,
+  "results": [
+    {
+      "wrapperType": "collection",
+      "collectionType": "Album",
+      "collectionId": 719245563,
+      "artistId": 358714030,
+      "artistName": "Kavinsky",
+      "collectionName": "OutRun",
+      "collectionViewUrl": "https://music.apple.com/de/album/outrun/719245563",
+      "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music/v4/outrun/100x100bb.jpg"
+    }
+  ]
+}

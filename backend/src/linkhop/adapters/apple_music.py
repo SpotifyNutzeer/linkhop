@@ -16,6 +16,21 @@ def _artwork(item: dict[str, Any]) -> str:
     return url.replace("100x100", "600x600")
 
 
+_ENTITY = {
+    ContentType.TRACK: "song",
+    ContentType.ALBUM: "album",
+    ContentType.ARTIST: "musicArtist",
+}
+
+
+def _id_and_url(item: dict[str, Any], target_type: ContentType) -> tuple[str, str]:
+    if target_type == ContentType.TRACK:
+        return str(item["trackId"]), item["trackViewUrl"]
+    if target_type == ContentType.ALBUM:
+        return str(item["collectionId"]), item["collectionViewUrl"]
+    return str(item["artistId"]), item["artistLinkUrl"]
+
+
 class AppleMusicAdapter:
     service_id = "apple_music"
     capabilities = AdapterCapabilities(track=True, album=True, artist=True)
@@ -74,4 +89,37 @@ class AppleMusicAdapter:
         return None
 
     async def search(self, meta: ResolvedContent, target_type: ContentType) -> list[SearchHit]:
-        raise NotImplementedError  # Task 3
+        if target_type == ContentType.TRACK and meta.isrc:
+            results = await self._get("/lookup", {"isrc": meta.isrc})
+            songs = [r for r in results if r.get("wrapperType") == "track"]
+            if songs:
+                id_, url = _id_and_url(songs[0], target_type)
+                return [SearchHit(
+                    service=self.service_id, id=id_, url=url, confidence=1.0, match="isrc",
+                )]
+            return []
+        if target_type == ContentType.ALBUM and meta.upc:
+            results = await self._get("/lookup", {"upc": meta.upc})
+            albums = [r for r in results if r.get("wrapperType") == "collection"]
+            if albums:
+                id_, url = _id_and_url(albums[0], target_type)
+                return [SearchHit(
+                    service=self.service_id, id=id_, url=url, confidence=1.0, match="upc",
+                )]
+            return []
+        if target_type == ContentType.ARTIST:
+            # title ist bei Artists bereits der Name — artists[0] anzuhängen
+            # würde ihn im Such-Term verdoppeln.
+            term = meta.title
+        else:
+            term = f"{meta.title} {meta.artists[0]}" if meta.artists else meta.title
+        results = await self._get(
+            "/search",
+            {"term": term, "media": "music", "entity": _ENTITY[target_type], "limit": 3},
+        )
+        return [
+            SearchHit(
+                service=self.service_id, id=id_, url=url, confidence=0.0, match="metadata",
+            )
+            for id_, url in (_id_and_url(item, target_type) for item in results[:3])
+        ]
