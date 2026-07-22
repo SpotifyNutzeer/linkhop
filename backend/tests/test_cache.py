@@ -28,10 +28,20 @@ async def test_set_with_ttl_honored(cache: Cache):
 
 
 async def test_convert_key_format():
-    k1 = Cache.convert_key("spotify", "track", "abc")
-    k2 = Cache.convert_key("spotify", "track", "abc")
+    k1 = Cache.convert_key(["spotify", "deezer"], "spotify", "track", "abc")
+    k2 = Cache.convert_key(["deezer", "spotify"], "spotify", "track", "abc")
+    # Reihenfolge der Dienste darf den Key nicht ändern (dict-Iterationsreihenfolge).
     assert k1 == k2
-    assert k1 == "cache:spotify:track:abc"
+    assert k1 == "cache:deezer+spotify:spotify:track:abc"
+
+
+async def test_convert_key_differs_per_service_set():
+    # Der aktive Dienste-Satz ist Teil des Keys: Nach dem Aktivieren eines
+    # neuen Dienstes (z. B. Apple Music in v0.2.5) würden sonst alte Einträge
+    # bis zu TTL lang Ergebnisse ohne den neuen Dienst ausliefern.
+    k_old = Cache.convert_key(["spotify", "deezer"], "spotify", "track", "abc")
+    k_new = Cache.convert_key(["spotify", "deezer", "apple_music"], "spotify", "track", "abc")
+    assert k_old != k_new
 
 
 async def test_ping_returns_true(cache: Cache):

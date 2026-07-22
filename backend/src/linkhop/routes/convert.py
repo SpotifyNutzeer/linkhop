@@ -29,10 +29,9 @@ async def convert(
     parsed = parse(url)
 
     cache: Cache = request.app.state.cache
-    cache_key = Cache.convert_key(parsed.service, parsed.type, parsed.id)
-    cached = await cache.get(cache_key)
-
     adapters = request.app.state.adapters
+    cache_key = Cache.convert_key(adapters.keys(), parsed.service, parsed.type, parsed.id)
+    cached = await cache.get(cache_key)
 
     if cached is not None:
         source_dict = cached["source"]

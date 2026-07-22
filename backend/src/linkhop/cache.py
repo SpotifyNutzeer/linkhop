@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from typing import Any
 
 import redis.asyncio as redis
@@ -33,5 +34,9 @@ class Cache:
             return False
 
     @staticmethod
-    def convert_key(service: str, type_: str, id_: str) -> str:
-        return f"cache:{service}:{type_}:{id_}"
+    def convert_key(services: Iterable[str], service: str, type_: str, id_: str) -> str:
+        # Der aktive Dienste-Satz ist Teil des Keys: Einträge, die unter einem
+        # anderen Satz berechnet wurden (Dienst aktiviert/deaktiviert), würden
+        # sonst bis zu TTL lang veraltete Target-Listen ausliefern.
+        fingerprint = "+".join(sorted(services))
+        return f"cache:{fingerprint}:{service}:{type_}:{id_}"
