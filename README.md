@@ -17,8 +17,13 @@ identifiers (ISRC for tracks, UPC for albums) over fuzzy metadata search.
 | Deezer        | ✓      | ✓      | ✓       | No credentials needed     |
 | Tidal         | ✓      | ✓      | ✓       | OAuth client credentials  |
 | YouTube Music | ✓      | ✓      | ✓       | `ytmusicapi`, unofficial  |
+| Apple Music   | ✓      | ✓      | ✓       | iTunes Search API, free   |
 
 Playlists are out of scope for V1.
+
+Note: the iTunes API accepts ISRC/UPC as lookup *input* but does not return
+them in responses — conversions *towards* Apple Music match via ISRC/UPC,
+conversions *from* Apple Music fall back to metadata matching.
 
 ## Features
 
@@ -70,8 +75,8 @@ pnpm dev                           # http://localhost:5173, proxied /api → :80
 ```
 
 Then open <http://localhost:5173> and paste a Deezer track URL
-(Deezer and YouTube Music work without credentials; Spotify/Tidal need
-client credentials via env vars — see `backend/README.md`).
+(Deezer, YouTube Music and Apple Music work without credentials;
+Spotify/Tidal need client credentials via env vars — see `backend/README.md`).
 
 See [`backend/README.md`](backend/README.md) for the full env-var reference,
 admin CLI (`linkhop-admin key create|list|revoke`) and live-integration

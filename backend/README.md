@@ -46,9 +46,10 @@ so a plain `docker-compose up -d` + `uv run uvicorn …` works without overrides
 | `LINKHOP_DATABASE_URL` | `postgresql+asyncpg://linkhop:linkhop@localhost:5432/linkhop` | Matches compose. |
 | `LINKHOP_REDIS_URL` | `redis://localhost:6379/0` | Matches compose. |
 | `LINKHOP_LOG_LEVEL` | `INFO` | `DEBUG` for verbose dev logs. |
-| `LINKHOP_ENABLE_SPOTIFY` / `_DEEZER` / `_TIDAL` / `_YOUTUBE_MUSIC` | all `true` | Toggle individual adapters. |
+| `LINKHOP_ENABLE_SPOTIFY` / `_DEEZER` / `_TIDAL` / `_YOUTUBE_MUSIC` / `_APPLE_MUSIC` | all `true` | Toggle individual adapters. |
 | `LINKHOP_SPOTIFY_CLIENT_ID` / `_SECRET` | empty | Required when Spotify is enabled. |
 | `LINKHOP_TIDAL_CLIENT_ID` / `_SECRET` | empty | Required when Tidal is enabled. |
+| `LINKHOP_APPLE_MUSIC_STOREFRONT` | `de` | Apple Music country catalog for lookups and generated links. |
 | `LINKHOP_RATE_ANONYMOUS` / `_RATE_WITH_KEY` | 20 / 300 per minute | |
 | `LINKHOP_CACHE_TTL` | 604800 (7 days) | Redis cache TTL. |
 | `LINKHOP_CORS_ALLOW_ORIGINS` | `*` | CSV of origins or `*`. |
