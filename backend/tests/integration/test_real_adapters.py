@@ -1,15 +1,17 @@
 import os
+from dataclasses import replace
 
 import httpx
 import pytest
 from ytmusicapi import YTMusic
 
+from linkhop.adapters.apple_music import AppleMusicAdapter
 from linkhop.adapters.deezer import DeezerAdapter
 from linkhop.adapters.spotify import SpotifyAdapter
 from linkhop.adapters.tidal import TidalAdapter
 from linkhop.adapters.youtube_music import YouTubeMusicAdapter
 from linkhop.models.domain import ContentType
-from linkhop.url_parser import parse
+from linkhop.url_parser import ParsedUrl, parse
 
 # Sowohl Marker als auch Env-Gate: `pytest -m "not integration"` schließt die
 # Tests aus (marker-Sweep in CI), `LINKHOP_LIVE_TESTS=1` schaltet sie live
@@ -41,6 +43,7 @@ async def clients():
                 client_secret=os.environ.get("LINKHOP_TIDAL_CLIENT_SECRET", ""),
             ),
             "youtube_music": YouTubeMusicAdapter(client=YTMusic()),
+            "apple_music": AppleMusicAdapter(client=http, storefront="de"),
         }
 
 
@@ -125,3 +128,48 @@ async def test_youtube_music_to_deezer_metadata(clients):
     assert source is not None
     hits = await clients["deezer"].search(source, ContentType(parsed.type))
     assert hits
+
+
+async def test_deezer_to_apple_music_via_metadata(clients):
+    # Credential-freier Flow: Deezer liefert Metadaten, Apple-Search matcht.
+    # Hinweis: iTunes ISRC-Abdeckung ist begrenzt. Für Metadaten-Matching
+    # entfernen wir das ISRC, damit der Adapter zum Metadaten-Fallback greift.
+    parsed = parse("https://www.deezer.com/track/3135556")
+    source = await clients["deezer"].resolve(parsed)
+    assert source is not None
+    assert source.title, "Deezer resolve returned no title"
+    assert source.artists, "Deezer resolve returned no artists"
+
+    # Für Metadaten-Matching: ISRC temporär entfernen, da iTunes-Abdeckung
+    # begrenzt ist. (In der Praxis handhabt die Pipeline das über score_candidate.)
+    source_no_isrc = replace(source, isrc=None)
+    hits = await clients["apple_music"].search(source_no_isrc, ContentType(parsed.type))
+    assert hits, "No Apple Music hits found for Deezer track"
+    assert any(h.match == "metadata" for h in hits)
+
+
+async def test_apple_music_resolve_from_search_hit(clients):
+    # Credential-freie Validierung: die Apple-ID kommt aus dem Metadaten-Hit,
+    # resolve lädt Metadaten nach (die Pipeline macht in _score_hit dasselbe).
+    parsed = parse("https://www.deezer.com/track/3135556")
+    deezer_source = await clients["deezer"].resolve(parsed)
+    assert deezer_source is not None
+
+    # Hinweis: iTunes ISRC-Abdeckung ist begrenzt. Für Metadaten-Matching
+    # entfernen wir das ISRC, damit der Adapter zum Metadaten-Fallback greift.
+    deezer_source_no_isrc = replace(deezer_source, isrc=None)
+
+    # Search Apple Music by Deezer metadata
+    apple_hits = await clients["apple_music"].search(deezer_source_no_isrc, ContentType.TRACK)
+    assert apple_hits, "No Apple Music hits for Deezer track metadata"
+
+    # Resolve the first Apple Music hit liefert vollständige Metadaten
+    apple_source = await clients["apple_music"].resolve(
+        ParsedUrl("apple_music", "track", apple_hits[0].id)
+    )
+    assert apple_source is not None
+    assert apple_source.title, "Apple Music track has no title"
+    assert apple_source.duration_ms, "Apple Music track has no duration"
+    assert apple_source.artists, "Apple Music track has no artists"
+    # iTunes-Antworten enthalten keine ISRCs — das ist dokumentiertes Verhalten.
+    assert apple_source.isrc is None, "iTunes should not return ISRC"
